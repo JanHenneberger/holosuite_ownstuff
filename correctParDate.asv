@@ -1,0 +1,10 @@
+function old = correctParDate(oldAsFile)
+
+parDate = oldAsFile.pStats.dateNumPar;
+for cnt = 1:numel(parDate)
+    if parDate < 1e5
+        parDate(cnt) = oldAsFile.dateNumHolo(oldAsFile.pStats.nHoloAll(cnt));
+    end
+end
+newAsFile = oldAsFile;
+

@@ -1,0 +1,100 @@
+function outFile = mergePsFiles(folderPSFile, nameMSFile, folderMSFile)
+
+cd(folderPSFile);
+psfilenames = dir('*_ps.mat');
+psfilenames = {psfilenames.name};
+
+%load the file and merge them together
+for cnt = 1:numel(psfilenames)
+    fprintf('Merge Particle Statistik File: %04u / %04u\n',cnt, numel(psfilenames) );
+    temp = load(psfilenames{cnt});
+   
+    temp.pStats.pDiamOldThresh= pDiamFrompImage(temp.pStats.pImage, ...
+            -6, inf, -0.17, 0.17, @and, temp.ampMean, temp.ampSTD, temp.dx, temp.dy);
+        
+     if ~isnan(temp.pStats.zPos)
+        if ~exist('outFile','var')
+            cntOutFile = 1;
+            
+            outFile = temp;
+            
+            outFile.folderPSFile = pwd;
+            outFile.psFilenames = psfilenames;
+            [outFile.dateNumHolo, outFile.dateVecHolo] = getTimeFromFileName(psfilenames{1});
+            outFile.dateVecHolo =  outFile.dateVecHolo';
+            
+            outFile.pStats.nHolo = ones(1,numel(outFile.pStats.pDiam));
+            outFile.pStats.isInVolume = cell2mat(outFile.pStats.isInVolume);
+            outFile.ampThresh = outFile.ampThresh';
+            
+            copyFields              = fieldnames(outFile.pStats);
+        else
+            cntOutFile = cntOutFile + 1;
+            
+            temp.pStats.nHolo = cntOutFile*ones(1,numel(temp.pStats.pDiam));
+            temp.pStats.isInVolume = cell2mat(temp.pStats.isInVolume);
+            
+            outFile.ampMean(cntOutFile) = temp.ampMean;
+            outFile.ampSTD(cntOutFile) = temp.ampSTD;
+            outFile.ampThresh(:,cntOutFile) = temp.ampThresh';
+            outFile.valid_particles = [outFile.valid_particles temp.valid_particles];
+            [temp2, temp3] = getTimeFromFileName(psfilenames{cntOutFile});
+            outFile.dateNumHolo(cntOutFile) = temp2;
+            outFile.dateVecHolo(:,cntOutFile) = temp3';
+            for cnt2 = 1:numel(copyFields)
+                outFile.pStats.(copyFields{cnt2}) = [outFile.pStats.(copyFields{cnt2}) temp.pStats.(copyFields{cnt2})];
+            end
+        end
+        clear temp temp2 temp3
+    end
+end
+
+
+if exist('outFile','var')
+    %size Correction
+    outFile.pStats.pDiamOldSizes = outFile.pStats.pDiam;
+    outFile.pStats.pDiam = correction_diameter(outFile.pStats.pDiam);
+    
+    outFile.pStats.pDiamOldSizesOldThresh = outFile.pStats.pDiamOldThresh;
+    outFile.pStats.pDiamOldThresh = correction_diameter(outFile.pStats.pDiamOldThresh);
+    
+    outFile.parameterInVolume.borderPixel = 50;
+    outFile.parameterInVolume.minZPos = 1e-3;
+    outFile.parameterInVolume.maxZPos = 20e-3;
+    outFile.parameterInVolume.minXPos = (-outFile.Nx/2+outFile.parameterInVolume.borderPixel)*outFile.dx;
+    outFile.parameterInVolume.maxXPos = (outFile.Nx/2-outFile.parameterInVolume.borderPixel)*outFile.dx;
+    outFile.parameterInVolume.minYPos = (-outFile.Ny/2+outFile.parameterInVolume.borderPixel)*outFile.dy;
+    outFile.parameterInVolume.maxYPos = (outFile.Ny/2-outFile.parameterInVolume.borderPixel)*outFile.dy;
+    
+    
+    outFile.sample.Size.x      = outFile.parameterInVolume.maxXPos - outFile.parameterInVolume.minXPos;
+    outFile.sample.Size.y      = outFile.parameterInVolume.maxYPos - outFile.parameterInVolume.minYPos;
+    outFile.sample.Size.z      = outFile.parameterInVolume.maxZPos - outFile.parameterInVolume.minZPos;
+    outFile.sample.VolumeHolo  = outFile.sample.Size.x * outFile.sample.Size.y * outFile.sample.Size.z;
+    outFile.sample.Number      = outFile.pStats.nHolo(end);
+    outFile.sample.VolumeAll   = outFile.sample.VolumeHolo * outFile.sample.Number;
+    
+    %outFile.timeVec = conTime2Vec(outFile.timeHolo);
+    
+    outFile.blackListInd = unique(outFile.pStats.nHolo(outFile.pStats.pDiam >0.00025));
+    outFile.pStats.partIsOnBlackList = false(1, numel(outFile.pStats.nHolo));
+    for i = 1:numel(outFile.blackListInd)
+        outFile.pStats.partIsOnBlackList =  outFile.pStats.nHolo == outFile.blackListInd(i);
+    end
+    
+    outFile.pStats.partIsRealAll  = outFile.pStats.isInVolume;
+    outFile.pStats.partIsReal     = outFile.pStats.isInVolume & ~outFile.pStats.partIsOnBlackList;
+    outFile.sample.NumberReal = outFile.sample.Number - numel(outFile.blackListInd);
+    outFile.sample.VolumeReal   = outFile.sample.VolumeHolo * outFile.sample.NumberReal;
+    outFile.realInd = find(outFile.pStats.partIsReal);
+else
+    outFile = 'no Particle found';
+end
+if ~exist(folderMSFile,'dir'), mkdir(folderMSFile); end
+save(fullfile(folderMSFile, [nameMSFile '_ms.mat']),'outFile');
+
+
+
+
+
+

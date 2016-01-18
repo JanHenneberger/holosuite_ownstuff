@@ -1,0 +1,927 @@
+plotCase = 1;
+anParameter.asSearch = '2013-02-07';
+
+
+%% Start up
+if plotCase == 1;
+%new
+%1 Number Size Spectra Comparision
+anParameter.plotShowNumbSpectrum = 0;
+%2 Volume Size Spectra Comparision
+anParameter.plotShowVolSpectrum = 0;
+%3 Spatial Distribution Check
+anParameter.plotShowSpatDist = 0;
+anParameter.spatialDisCase = 1;
+%4 Correction Check
+anParameter.plotCorrectionCheck = 0;
+anParameter.correctionCheckCase = 1;
+%5 Time Serie Water Content
+anParameter.plotTimeWaterContent = 0;
+%6 Contour Plot
+anParameter.plotContour = 0;
+
+anParameter.savePlots = 1;
+anParameter.intervallVec = [0 0 0 0 0 300];
+anParameter.intervall = datenum(anParameter.intervallVec);
+%dataAll = rmfield(dataAll,'intervall');
+
+end
+
+if plotCase == 2;
+%new
+%1 Number Size Spectra Comparision
+anParameter.plotShowNumbSpectrum = 0;
+%2 Volume Size Spectra Comparision
+anParameter.plotShowVolSpectrum = 0;
+%3 Spatial Distribution Check
+anParameter.plotShowSpatDist = 0;
+anParameter.spatialDisCase = 1;
+%4 Correction Check
+anParameter.plotCorrectionCheck = 0;
+anParameter.correctionCheckCase = 1;
+%5 Time Serie Water Content
+anParameter.plotTimeWaterContent = 1;
+%6 Contour Plot
+anParameter.plotContour = 1;
+anParameter.savePlots = 1;
+anParameter.minPlotIntervall = 1;
+anParameter.maxPlotIntervall = 1;%numel(anDataAll.timeStart);
+anParameter.intervall = datenum([0 0 0 0 0 10]);
+end
+
+anParameter.choosenDay = 0;
+
+anParameter.lowSize = 6;
+anParameter.maxSize = 250;
+anParameter.divideSize = 34;
+
+set(0,'DefaultAxesFontSize',15);
+set(0,'DefaultAxesLineWidth',2);
+anParameter.plotColors = {'k','b','r','g','c','m','y'};
+anParameter.plotLineStyle = {'-','--',':','-.','-','--',':','-.','-','--',':','-.','-','--',':','-.'};
+anParameter.ParInfoFolder = 'F:\CLACE2013\OverviewSuite\asFiles';
+cd(anParameter.ParInfoFolder);
+anParameter.ParInfoFiles = dir(['*' anParameter.asSearch '*_as.mat']);
+anParameter.ParInfoFiles = {anParameter.ParInfoFiles.name};
+
+anParameter.cfg = config(fullfile(anParameter.ParInfoFolder, 'holoviewer.cfg'));
+[anParameter.histBinBorder, anParameter.histBinSizes, anParameter.histBinMiddle] ...
+    = getHistBorder(anParameter.divideSize, anParameter.maxSize, anParameter.cfg, 1);
+[anParameter.histBinBorderOldSizes, anParameter.histBinSizesOldSizes, anParameter.histBinMiddleOldSizes] ...
+    = getHistBorder(anParameter.divideSize, anParameter.maxSize, anParameter.cfg, 0);
+
+%Holo Data input
+if ~exist('dataAll','var');        
+    
+    %load the file and merge them together
+    for cnt = 1:numel(anParameter.ParInfoFiles)
+        fprintf('Merge Particle Statistik File: %04u / %04u\n',cnt, numel(anParameter.ParInfoFiles) );
+        temp = load(anParameter.ParInfoFiles{cnt});
+        temp = temp.outFile;
+        
+        if  isfield(temp, 'pStats') && sum(~isnan(temp.pStats.zPos))
+            if ~exist('dataAll','var')
+                cntOutFile = 1;
+                
+                dataAll = temp;
+                
+                dataAll.folderPSFile = {dataAll.folderPSFile} ;
+                copyFields              = fieldnames(dataAll.pStats);
+                
+                dataAll.pStats.nHoloAllAll = dataAll.pStats.nHoloAll;
+            else
+                cntOutFile = cntOutFile + 1;
+                
+                dataAll.ampMean = [dataAll.ampMean temp.ampMean];
+                dataAll.ampSTD = [dataAll.ampSTD temp.ampSTD];
+                dataAll.ampThresh = [dataAll.ampThresh temp.ampThresh];
+                dataAll.valid_particles = [dataAll.valid_particles temp.valid_particles];
+                dataAll.folderPSFile{cnt} = temp.folderPSFile;
+                dataAll.psFilenames = [dataAll.psFilenames temp.psFilenames];
+                dataAll.emptyPsFile = [ dataAll.emptyPsFile temp.emptyPsFile];
+                dataAll.dateNumHolo = [dataAll.dateNumHolo temp.dateNumHolo];
+                dataAll.dateVecHolo = [dataAll.dateVecHolo temp.dateVecHolo];
+                dataAll.blackListInd = [dataAll.blackListInd temp.blackListInd];
+                dataAll.realInd = [dataAll.realInd temp.realInd];
+                
+                for cnt2 = 1:numel(copyFields)
+                    if ~isfield(temp.pStats, copyFields{cnt2})
+                        temp.pStats.(copyFields{cnt2}) = nan(1,numel(temp.pStats.zPos));
+                    end
+                    dataAll.pStats.(copyFields{cnt2}) = [dataAll.pStats.(copyFields{cnt2}) temp.pStats.(copyFields{cnt2})];
+                end
+                dataAll.pStats.nHoloAllAll = [dataAll.pStats.nHoloAllAll ...
+                    temp.pStats.nHoloAll+dataAll.pStats.nHoloAllAll(end)];
+            end
+            clear temp
+        end
+    end
+    
+    dataAll.timeStart = dataAll.dateNumHolo(1);
+    dataAll.timeEnd = dataAll.dateNumHolo(end);
+    
+    dataAll.dateVecHoloStart = dataAll.dateVecHolo(:,1);
+    dataAll.dateVecHoloEnd = dataAll.dateVecHolo(:,end);
+    
+    
+    %Predict Class of Particles
+    dataAll.pStats = predictClass(dataAll.pStats);
+    
+     dataAll.pStats.isBorderOld2 = logical(dataAll.pStats.isBorder);
+     dataAll.pStats.isBorder = logical(isBorderParticle2(dataAll.pStats.xPos, ...
+            dataAll.pStats.yPos, dataAll.pStats.zPos, dataAll.zs ,dataAll.Nx, dataAll.Ny,...
+            dataAll.dx, dataAll.dy, dataAll.dz));
+    
+   %first calculations
+   dataAll.pStats.partIsRealAll = dataAll.pStats.isInVolume & ...
+       ~dataAll.pStats.isBorder & ...
+       ~ismember(dataAll.pStats.predictedHClass,'Artefact');
+   dataAll.pStats.partIsReal = dataAll.pStats.partIsRealAll & ...
+       ~dataAll.pStats.partIsOnBlackList;
+    dataAll.meanD   = nanmean(dataAll.pStats.pDiamOldSizesOldThresh(dataAll.pStats.partIsReal & ...
+        dataAll.pStats.pDiamOldSizesOldThresh > anParameter.lowSize*1e-6 &...
+        dataAll.pStats.pDiamOldSizesOldThresh < anParameter.maxSize*1e-6));
+    dataAll.totalCount = nansum(dataAll.pStats.partIsReal & ...
+        dataAll.pStats.pDiamOldSizesOldThresh > anParameter.lowSize*1e-6 &...
+        dataAll.pStats.pDiamOldSizesOldThresh < anParameter.maxSize*1e-6);
+end
+
+%Sonic data input
+if ~exist('dataSonic','var');
+    dataSonic = inputSonicData('F:\CLACE2013\Labview');
+end
+
+%Manchester data input
+if ~exist('dataManchester', 'var');    
+    dataManchester.cdp = load(fullfile('F:\CLACE2013\Manchester','cdp10secs'));
+    dataManchester.cdp = dataManchester.cdp.cdp;
+    dataManchester.pvm = load(fullfile('F:\CLACE2013\Manchester','pvm10secs'));
+    dataManchester.pvm = dataManchester.pvm.pvm;
+end
+
+%find Intervall
+if ~isfield(dataAll, 'intervall');
+    time = dataAll.timeStart;
+    
+%     if anParameter.choosenDay == 0;
+%         dateAll.day = ones(1,numel(dataAll.dateNumHolo));
+%     else
+%         dateAll.day = zeros(1,numel(dataAll.dateNumHolo));
+%         dateAll.day(dataAll.dateVecHolo(:,3) == anParameter.choosenDay) = 1;
+%     end    
+    dataAll.intervall = zeros(1,numel(dataAll.pStats.zPos));
+    cnt = 1;
+    while time < dataAll.timeEnd
+        datevec(time)
+        tmp = dataAll.pStats.dateNumPar >= time & dataAll.pStats.dateNumPar < time + anParameter.intervall;
+        if sum(tmp~=0)
+            dataAll.intervall(tmp) =  cnt;
+            cnt = cnt+1;
+            time = time + anParameter.intervall;
+        else
+            tmp2 = find(dataAll.dateNumHolo > time+anParameter.intervall,1,'first');
+            time = dataAll.dateNumHolo(tmp2);
+        end
+        
+    end
+    clear time
+    clear tmp
+    clear tmp2
+    clear anDataAll
+end
+
+%first calculation in intervalls
+if ~exist('anDataAll','var');
+for cnt = 1:max(dataAll.intervall)    
+    tmp = dataAll.intervall == cnt;
+    anDataAll.timeStart(cnt) = min(dataAll.pStats.dateNumPar(tmp));
+    anDataAll.timeEnd(cnt) = max(dataAll.pStats.dateNumPar(tmp));
+    
+    anDataAll.timeVecStart(:,cnt) = datevec(anDataAll.timeStart(cnt));
+    anDataAll.timeVecEnd(:,cnt) =datevec(anDataAll.timeEnd(cnt));
+    
+        anDataAll.meanD(cnt)   = nanmean(dataAll.pStats.pDiamOldSizesOldThresh(tmp & dataAll.pStats.partIsReal & dataAll.pStats.pDiamOldSizesOldThresh > anParameter.lowSize*1e-6 &...
+        dataAll.pStats.pDiamOldSizesOldThresh < anParameter.maxSize*1e-6));
+        anDataAll.totalCount(cnt) = nansum(tmp & dataAll.pStats.partIsReal & dataAll.pStats.pDiamOldSizesOldThresh > anParameter.lowSize*1e-6 &...
+        dataAll.pStats.pDiamOldSizesOldThresh < anParameter.maxSize*1e-6);
+
+    anDataAll.isInVolume{cnt} = dataAll.pStats.isInVolume(tmp);
+    anDataAll.isBorder{cnt} = dataAll.pStats.isBorder(tmp);
+    anDataAll.partIsReal{cnt} = dataAll.pStats.partIsReal(tmp);
+    anDataAll.partIsRealAll{cnt} = dataAll.pStats.partIsRealAll(tmp);
+    
+    anDataAll.predictedClass{cnt} = dataAll.pStats.predictedHClass(tmp);
+    
+    anDataAll.pDiam{cnt} = dataAll.pStats.pDiamOldSizesOldThresh(tmp);
+    anDataAll.pDiamMean{cnt} = dataAll.pStats.pDiamMean(tmp);
+    anDataAll.pDiamOldSizes{cnt} = dataAll.pStats.pDiamOldSizesOldThresh(tmp);
+    anDataAll.pDiamOldThresh{cnt} = dataAll.pStats.pDiamOldSizesOldThresh(tmp);
+    anDataAll.imEquivDiaOldSizes{cnt} = dataAll.pStats.imEquivDiaOldSizes(tmp);
+    
+    anDataAll.xPos{cnt} = dataAll.pStats.xPos(tmp);
+    anDataAll.yPos{cnt} = dataAll.pStats.yPos(tmp);
+    anDataAll.zPos{cnt} = dataAll.pStats.zPos(tmp);
+    
+    anDataAll.indHoloAll{cnt} = dataAll.pStats.nHoloAllAll(tmp);
+    anDataAll.indHolo{cnt} = anDataAll.indHoloAll{cnt} - anDataAll.indHoloAll{cnt}(1)+1;
+    
+    anDataAll.sample{cnt}.Number      = anDataAll.indHolo{cnt}(end) - anDataAll.indHolo{cnt}(1);
+    anDataAll.sample{cnt}.VolumeAll   = dataAll.sample.VolumeHolo * anDataAll.sample{cnt}.Number ;    
+    
+    anDataAll.blackListInd{cnt} = unique(anDataAll.indHoloAll{cnt}(anDataAll.pDiam{cnt} >0.00025));
+    anDataAll.partIsOnBlackList{cnt} = false(1, numel(anDataAll.indHoloAll{cnt}));
+    for i = 1:numel(anDataAll.blackListInd{cnt})
+        anDataAll.partIsOnBlackList{cnt} =  anDataAll.indHoloAll{cnt} == anDataAll.blackListInd{cnt}(i);
+    end
+    
+    anDataAll.partIsWater{cnt} = anDataAll.partIsReal{cnt} & ...
+    ismember(anDataAll.predictedClass{cnt},'Water');
+    anDataAll.partIsIce{cnt} = anDataAll.partIsReal{cnt} & ...
+    ismember(anDataAll.predictedClass{cnt},'Ice');
+    anDataAll.partIsArtefact{cnt} = ~anDataAll.partIsReal{cnt};
+
+    anDataAll.sample{cnt}.NumberReal = anDataAll.sample{cnt}.Number - numel(anDataAll.blackListInd{cnt});
+    anDataAll.sample{cnt}.VolumeReal   = dataAll.sample.VolumeHolo * anDataAll.sample{cnt}.NumberReal;
+    anDataAll.realInd{cnt} = find(anDataAll.partIsReal{cnt});
+end
+end
+
+%Find Sonic Date Indices for Measurements Periods
+if ~isfield('anDataAll','measMeanV');
+for cnt = 1:numel(anDataAll.timeStart)
+    anDataAll.sonicIndice{cnt} = [find(dataSonic.Date_Num> anDataAll.timeStart(cnt),1,'first') ...
+        find(dataSonic.Date_Num> anDataAll.timeEnd(cnt),1,'first')];
+    [anDataAll.measMeanV(cnt), anDataAll.measStdV(cnt)] = ...
+        mean_data(dataSonic.V_total,anDataAll.sonicIndice{cnt});
+    [anDataAll.measMeanT(cnt), anDataAll.measStdT(cnt)] = ...
+        mean_data(dataSonic.T_acoustic,anDataAll.sonicIndice{cnt});
+    [anDataAll.measMeanFlow(cnt), anDataAll.measStdFlow(cnt)] = ...
+        mean_data(dataSonic.Flowmeter_massflow,anDataAll.sonicIndice{cnt});
+    [anDataAll.meanElevSonic(cnt), anDataAll.stdElevSonic(cnt)] = ...
+        mean_data(dataSonic.WD_elevation,anDataAll.sonicIndice{cnt});
+    [anDataAll.meanElevRotor(cnt), anDataAll.stdElevRotor(cnt)] = ...
+        mean_data(dataSonic.WD_rotor_elevation,anDataAll.sonicIndice{cnt});
+    meanx = mean_data(dataSonic.Mean_Vx,anDataAll.sonicIndice{cnt});
+    meany = mean_data(dataSonic.Mean_Vy,anDataAll.sonicIndice{cnt});
+    anDataAll.measMeanAzimutSonic(cnt) = conWindXY2Deg(meanx, meany);
+    clear meanx
+    clear meany
+    %% Rotor not on in CLACE 2013
+    %     meanroty = mean_data(-cosd(dataSonic.WD_rotor_azimut_sonic),anDataAll.sonicIndice{cnt});
+    %     meanrotx = mean_data(-sind(dataSonic.WD_rotor_azimut_sonic),anDataAll.sonicIndice{cnt});
+    %     anDataAll{cnt}.measMeanAzimutRotor = conWindXY2Deg(meanrotx, meanroty);
+    %     clear meanroty
+    %     clear meanrotx
+    %     diff_azimut = min([abs(dataSonic.WD_azimut-dataSonic.WD_rotor_azimut_sonic) ...
+    %         abs(abs(dataSonic.WD_azimut-dataSonic.WD_rotor_azimut_sonic)-360)],[],2);
+    %     anDataAll{cnt}.measMeanDiffAzimutSingle = mean_data(diff_azimut,anDataAll.sonicIndice{cnt});
+    %     anDataAll{cnt}.measMeanDiffAzimutMean = ...
+    %         abs( anDataAll{cnt}.measMeanAzimutSonic-anDataAll{cnt}.measMeanAzimutRotor);
+end
+end
+%Find Manchester Date Indices for Measurements Periods
+if ~isfield('anDataAll','cdpMean');
+for cnt = 1:numel(anDataAll.timeStart)
+    anDataAll.cdpIndice{cnt} = [find(dataManchester.cdp.dateNum> anDataAll.timeStart(cnt),1,'first') ...
+        find(dataManchester.cdp.dateNum> anDataAll.timeEnd(cnt),1,'first')];
+    anDataAll.pvmIndice{cnt} = [find(dataManchester.pvm.dateNum> anDataAll.timeStart(cnt),1,'first') ...
+        find(dataManchester.pvm.dateNum> anDataAll.timeEnd(cnt),1,'first')];
+   anDataAll.cdpMean(cnt) = nanmean(dataManchester.cdp.data(anDataAll.cdpIndice{cnt}));
+   anDataAll.cdpStd(cnt)  =  nanstd(dataManchester.cdp.data(anDataAll.cdpIndice{cnt}));
+   anDataAll.pvmMean(cnt) = nanmean(dataManchester.pvm.data(anDataAll.pvmIndice{cnt}));
+   anDataAll.pvmStd(cnt)  =  nanstd(dataManchester.pvm.data(anDataAll.pvmIndice{cnt}));   
+end
+end
+
+%Calculation of Histograms
+if true
+    for cnt = 1:numel(anDataAll.timeStart);         
+        tmp = dataAll.intervall == cnt;        
+        
+        anDataAll.constInletCorr{cnt}.pressure      = 656;    %[hPa]
+        anDataAll.constInletCorr{cnt}.temperature   = 273.15 + anDataAll.measMeanT(cnt); %[K]
+        anDataAll.constInletCorr{cnt}.massflow      = anDataAll.measMeanFlow(cnt);  %[l/min]
+        anDataAll.constInletCorr{cnt}.dPipe         = 0.05;    %[m]
+        anDataAll.constInletCorr{cnt}.windSpeed     = anDataAll.measMeanV(cnt);
+        
+        
+        anDataAll.timeString{cnt} = [num2str(anDataAll.timeVecStart(3,cnt),'%02u') 'th, ' ...
+            num2str(anDataAll.timeVecStart(4, cnt),'%02u') ':' num2str(anDataAll.timeVecStart(5,cnt),'%02u') '-'...
+            num2str(anDataAll.timeVecEnd(4,cnt),'%02u') ':' num2str(anDataAll.timeVecEnd(5,cnt),'%02u')];
+        
+        if isempty(anDataAll.pDiam{cnt}(anDataAll.partIsReal{cnt}))
+            tmp = zeros(numel(anParameter.histBinMiddle),1);
+            anDataAll.histReal(:,cnt) = tmp;
+            anDataAll.limit(:,cnt) = tmp;
+            anDataAll.histRealError(:,cnt) = tmp;
+            anDataAll.histRealOldSizes(:,cnt) = tmp;
+            anDataAll.limitOldSizes(:,cnt) = tmp;
+            anDataAll.histRealErrorOldSizes(:,cnt) = tmp;
+            anDataAll.histRealErrorCor(:,cnt) = tmp;
+            anDataAll.histRealErrorCorOld(:,cnt) = tmp;
+            anDataAll.histRealCount(:,cnt) = tmp;
+            anDataAll.histRealCountCor(:,cnt)= tmp;
+        else
+        [anDataAll.histReal(:,cnt), ~, ~, anDataAll.limit(:,cnt), anDataAll.histRealError(:,cnt)] = ...
+            histogram(anDataAll.pDiam{cnt}(anDataAll.partIsReal{cnt})*1e6, anDataAll.sample{cnt}.VolumeAll, anParameter.histBinBorder);
+        [anDataAll.histRealOldSizes(:,cnt), ~, ~, anDataAll.limitOldSizes(:,cnt), anDataAll.histRealErrorOldSizes(:,cnt)] = ...
+            histogram(anDataAll.pDiamOldSizes{cnt}(anDataAll.partIsReal{cnt})*1e6, anDataAll.sample{cnt}.VolumeAll, anParameter.histBinBorderOldSizes);
+        
+        anDataAll.histRealCor(:,cnt) = anDataAll.histReal(:,cnt)./Paik_inert(anParameter.histBinMiddle*1e-6, anDataAll.constInletCorr{cnt})';
+        anDataAll.histRealCorOldSizes(:,cnt) = anDataAll.histRealOldSizes(:,cnt)./Paik_inert(anParameter.histBinMiddleOldSizes*1e-6, anDataAll.constInletCorr{cnt})';
+        anDataAll.histRealErrorCor(:,cnt) =  anDataAll.histRealError(:,cnt)./Paik_inert(anParameter.histBinMiddle*1e-6, anDataAll.constInletCorr{cnt})';
+        anDataAll.histRealErrorCorOld(:,cnt) = anDataAll.histRealErrorOldSizes(:,cnt)./Paik_inert(anParameter.histBinMiddle*1e-6, anDataAll.constInletCorr{cnt})';
+        anDataAll.histRealCount(:,cnt) =  histc(anDataAll.pDiam{cnt}(anDataAll.partIsReal{cnt})*1e6, anParameter.histBinBorder(1:end-1))';
+        anDataAll.histRealCountCor(:,cnt) = anDataAll.histRealCount(:,cnt)./Paik_inert(anParameter.histBinMiddle*1e-6, anDataAll.constInletCorr{cnt})';
+        end
+        
+        if isempty(anDataAll.pDiam{cnt}(anDataAll.partIsWater{cnt}))
+            tmp = zeros(numel(anParameter.histBinMiddle),1);
+            anDataAll.water.histReal(:,cnt)=tmp;
+            anDataAll.water.limit(:,cnt)=tmp;
+            anDataAll.water.histRealError(:,cnt)=tmp;
+            anDataAll.water.histRealCor(:,cnt)=tmp;
+            anDataAll.water.histRealErrorCor(:,cnt)=tmp;
+        else
+        [anDataAll.water.histReal(:,cnt), ~, ~, anDataAll.water.limit(:,cnt), anDataAll.water.histRealError(:,cnt)] = ...
+            histogram(anDataAll.pDiam{cnt}(anDataAll.partIsWater{cnt})*1e6, anDataAll.sample{cnt}.VolumeAll, anParameter.histBinBorder);
+        anDataAll.water.histRealCor(:,cnt) = anDataAll.water.histReal(:,cnt)./Paik_inert(anParameter.histBinMiddle*1e-6, anDataAll.constInletCorr{cnt})';
+        anDataAll.water.histRealErrorCor(:,cnt) =  anDataAll.water.histRealError(:,cnt)./Paik_inert(anParameter.histBinMiddle*1e-6, anDataAll.constInletCorr{cnt})';
+        end
+        if isempty(anDataAll.pDiam{cnt}(anDataAll.partIsIce{cnt}))
+            tmp = zeros(numel(anParameter.histBinMiddle),1);
+            anDataAll.ice.histReal(:,cnt)=tmp;
+            anDataAll.ice.limit(:,cnt)=tmp;
+            anDataAll.ice.histRealError(:,cnt)=tmp;
+            anDataAll.ice.histRealCor(:,cnt)=tmp;
+            anDataAll.ice.histRealErrorCor(:,cnt)=tmp;
+        else
+        [anDataAll.ice.histReal(:,cnt), ~, ~, anDataAll.ice.limit(:,cnt), anDataAll.ice.histRealError(:,cnt)] = ...
+            histogram(anDataAll.pDiam{cnt}(anDataAll.partIsIce{cnt})*1e6, anDataAll.sample{cnt}.VolumeAll, anParameter.histBinBorder);
+        anDataAll.ice.histRealCor(:,cnt) = anDataAll.ice.histReal(:,cnt)./Paik_inert(anParameter.histBinMiddle*1e-6, anDataAll.constInletCorr{cnt})';
+        anDataAll.ice.histRealErrorCor(:,cnt) =  anDataAll.ice.histRealError(:,cnt)./Paik_inert(anParameter.histBinMiddle*1e-6, anDataAll.constInletCorr{cnt})';
+        end
+        
+        if isempty(anDataAll.pDiam{cnt}(anDataAll.partIsArtefact{cnt}))
+            tmp = zeros(numel(anParameter.histBinMiddle),1);
+            anDataAll.artefact.histReal(:,cnt)=tmp;
+            anDataAll.artefact.limit(:,cnt)=tmp;
+            anDataAll.artefact.histRealError(:,cnt)=tmp;
+            anDataAll.artefact.histRealCor(:,cnt)=tmp;
+            anDataAll.artefact.histRealErrorCor(:,cnt)=tmp;
+        else
+        [anDataAll.artefact.histReal(:,cnt), ~, ~, anDataAll.artefact.limit(:,cnt), anDataAll.artefact.histRealError(:,cnt)] = ...
+            histogram(anDataAll.pDiam{cnt}(anDataAll.partIsArtefact{cnt})*1e6, anDataAll.sample{cnt}.VolumeAll, anParameter.histBinBorder);
+        anDataAll.artefact.histRealCor(:,cnt) = anDataAll.artefact.histReal(:,cnt)./Paik_inert(anParameter.histBinMiddle*1e-6, anDataAll.constInletCorr{cnt})';
+        anDataAll.artefact.histRealErrorCor(:,cnt) =  anDataAll.artefact.histRealError(:,cnt)./Paik_inert(anParameter.histBinMiddle*1e-6, anDataAll.constInletCorr{cnt})';
+        end
+        %Total Water calculations
+        %parDiam = anDataAll.pDiam{cnt}(anDataAll.partIsReal{cnt} & anDataAll.pDiam{cnt} > anParameter.lowSize*1e-6);
+        parDiam = anDataAll.pDiam{cnt}((anDataAll.partIsIce{cnt} | anDataAll.partIsWater{cnt}) & anDataAll.pDiam{cnt} > anParameter.lowSize*1e-6 &...
+        anDataAll.pDiam{cnt} < anParameter.maxSize*1e-6);
+        if isempty(parDiam)
+            hist = zeros(1,numel(anParameter.histBinMiddle));            
+        else
+        hist = histc(parDiam, anParameter.histBinBorder*1e-6);
+        hist = hist(1:end-1);
+        end   
+        corr = Paik_inert(anParameter.histBinMiddle*1e-6, anDataAll.constInletCorr{cnt});
+        
+        anDataAll.TWMeanDRaw(cnt) = nanmean(parDiam);
+        if isnan(anDataAll.TWMeanDRaw(cnt))
+            anDataAll.TWMeanD(cnt) = nan;
+        else
+            anDataAll.TWMeanD(cnt) = nansum(anParameter.histBinMiddle*1e-6.*hist./corr/nansum(hist./corr));
+        end
+        anDataAll.TWCountRaw(cnt) = nansum(hist);
+        anDataAll.TWCount(cnt) = nansum(hist./corr);
+        anDataAll.TWConcentraction(cnt) = anDataAll.TWCount(cnt)/ anDataAll.sample{cnt}.VolumeReal*1e-6;
+%         if isnan(anDataAll.TWConcentraction(cnt))
+%             anDataAll.TWConcentraction(cnt) = 0;
+%         end
+        anDataAll.TWContentRaw(cnt)    = nansum(1/6*pi.*parDiam.^3)...
+                / anDataAll.sample{cnt}.VolumeReal*1e6;
+%         if isnan(anDataAll.TWContentRaw(cnt))
+%             anDataAll.TWContentRaw(cnt) = 0;
+%         end
+        anDataAll.TWContent(cnt) = nansum((1/6*pi.*(anParameter.histBinMiddle*1e-6).^3).*hist./corr)...
+            / anDataAll.sample{cnt}.VolumeReal*1e6;
+%         if isnan(anDataAll.TWContent(cnt))
+%             anDataAll.TWContent(cnt)  = 0;
+%         end
+      
+        clear parDiam
+        clear hist
+        clear corr
+        
+        %Ice Water calculations
+%         parDiam = anDataAll.pDiam{cnt}(anDataAll.partIsReal{cnt} ...
+%             & anDataAll.pDiam{cnt} > anParameter.lowSize*1e-6 ...
+%             & anDataAll.pDiam{cnt} > anParameter.divideSize*1e-6);
+        parDiam = anDataAll.pDiam{cnt}(anDataAll.partIsIce{cnt} & anDataAll.pDiam{cnt} > anParameter.lowSize*1e-6 &...
+        anDataAll.pDiam{cnt} < anParameter.maxSize*1e-6);
+        if isempty(parDiam)
+            hist = zeros(1,numel(anParameter.histBinMiddle));            
+        else
+        hist = histc(parDiam, anParameter.histBinBorder*1e-6);
+        hist = hist(1:end-1);
+        end
+        corr = Paik_inert(anParameter.histBinMiddle*1e-6, anDataAll.constInletCorr{cnt});
+        
+        anDataAll.IWMeanDRaw(cnt) = nanmean(parDiam);
+        if isnan(anDataAll.IWMeanDRaw(cnt))
+            anDataAll.IWMeanD(cnt) = nan;
+        else
+            anDataAll.IWMeanD(cnt) = nansum(anParameter.histBinMiddle*1e-6.*hist./corr/nansum(hist./corr));
+        end
+        anDataAll.IWCountRaw(cnt) = nansum(hist);
+        anDataAll.IWCount(cnt) = nansum(hist./corr);
+        anDataAll.IWConcentraction(cnt) = anDataAll.IWCount(cnt)/ anDataAll.sample{cnt}.VolumeReal*1e-6;
+%         if isnan(anDataAll.IWConcentraction(cnt))
+%             anDataAll.IWConcentraction(cnt) = 0;
+%         end
+        anDataAll.IWContentRaw(cnt)    = nansum(1/6*pi.*parDiam.^3)...
+                / anDataAll.sample{cnt}.VolumeReal*1e6;
+%         if isnan(anDataAll.IWContentRaw(cnt))
+%             anDataAll.IWContentRaw(cnt) = 0;
+%         end
+        anDataAll.IWContent(cnt) = nansum((1/6*pi.*(anParameter.histBinMiddle*1e-6).^3).*hist./corr)...
+            / anDataAll.sample{cnt}.VolumeReal*1e6;
+%         if isnan(anDataAll.IWContent(cnt))
+%             anDataAll.IWContent(cnt)  = 0;
+%         end
+        clear parDiam
+        clear hist
+        clear corr
+        
+        %Liquid Water calculations
+        %         parDiam = anDataAll.pDiam{cnt}(anDataAll.partIsReal{cnt} ...
+        %             & anDataAll.pDiam{cnt} > anParameter.lowSize*1e-6 ...
+        %             & anDataAll.pDiam{cnt} <= anParameter.divideSize*1e-6);
+        parDiam = anDataAll.pDiam{cnt}(anDataAll.partIsWater{cnt} & anDataAll.pDiam{cnt} > anParameter.lowSize*1e-6 &...
+        anDataAll.pDiam{cnt} < anParameter.maxSize*1e-6);
+        if isempty(parDiam)
+            hist = zeros(1,numel(anParameter.histBinMiddle));            
+        else
+        hist = histc(parDiam, anParameter.histBinBorder*1e-6);
+        hist = hist(1:end-1);
+        end
+        corr = Paik_inert(anParameter.histBinMiddle*1e-6, anDataAll.constInletCorr{cnt});
+        
+        anDataAll.LWMeanDRaw(cnt) = nanmean(parDiam);
+        if isnan(anDataAll.LWMeanDRaw(cnt))
+            anDataAll.LWMeanD(cnt) = nan;
+        else
+            anDataAll.LWMeanD(cnt) = nansum(anParameter.histBinMiddle*1e-6.*hist./corr/nansum(hist./corr));
+        end
+        anDataAll.LWCountRaw(cnt) = nansum(hist);
+        anDataAll.LWCount(cnt) = nansum(hist./corr);
+        anDataAll.LWConcentraction(cnt) = anDataAll.LWCount(cnt)/ anDataAll.sample{cnt}.VolumeReal*1e-6;
+%         if isnan(anDataAll.LWConcentraction(cnt))
+%             anDataAll.LWConcentraction(cnt) = 0;
+%         end
+        anDataAll.LWContentRaw(cnt)     = nansum(1/6*pi.*parDiam.^3)...
+                / anDataAll.sample{cnt}.VolumeReal*1e6;
+%         if isnan(anDataAll.LWContentRaw(cnt))
+%             anDataAll.LWContentRaw(cnt) = 0;
+%         end
+        anDataAll.LWContent(cnt) = nansum((1/6*pi.*(anParameter.histBinMiddle*1e-6).^3).*hist./corr)...
+            / anDataAll.sample{cnt}.VolumeReal*1e6;
+%         if isnan(anDataAll.LWContent(cnt))
+%             anDataAll.LWContent(cnt)  = 0;
+%         end
+        clear parDiam
+        clear hist
+        clear corr
+    end
+end
+%%Plots
+anParameter.minPlotIntervall = 1;
+anParameter.maxPlotIntervall = numel(anDataAll.timeStart);
+anParameter.plotColorNew = cool((anParameter.maxPlotIntervall-anParameter.minPlotIntervall)+1);
+anParameter.middleCnt = anParameter.minPlotIntervall+...
+    floor((anParameter.maxPlotIntervall-anParameter.minPlotIntervall)/2);
+%% Number Size Spectra Comparision %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 01
+if anParameter.plotShowNumbSpectrum
+    figure(1)
+    clf    
+    legendString = 'legend(';
+    for cnt = anParameter.minPlotIntervall:anParameter.maxPlotIntervall
+        if cnt == anParameter.middleCnt
+            errorbar(anParameter.histBinMiddle, anDataAll.water.histRealCor(:,cnt), ...
+                anDataAll.water.histRealErrorCor(:,cnt),...
+                'color', anParameter.plotColorNew(cnt-anParameter.minPlotIntervall+1,:),...
+                'LineWidth',2);
+        else
+            plot(anParameter.histBinMiddle, anDataAll.water.histRealCor(:,cnt), ...
+                'color', anParameter.plotColorNew(cnt-anParameter.minPlotIntervall+1,:),...
+                'LineWidth',2);
+        end
+        hold on        
+        legendString = [legendString '''' ...
+            num2str(cnt,'%02u')...
+            ': ' anDataAll.timeString{cnt} ...
+            ', T=' num2str(anDataAll.measMeanT(cnt),'%4.1f') '\pm' ...
+            num2str(anDataAll.measStdT(cnt),'%4.1f') '°C'...
+            ', v=' num2str(anDataAll.measMeanV(cnt),'%4.1f') '\pm' ...
+            num2str(anDataAll.measStdV(cnt),'%4.1f') ' m/s'...
+            ', Azi=' num2str(anDataAll.measMeanAzimutSonic(cnt),'%3.0f') '°'...
+            ', Elev=' num2str(anDataAll.meanElevSonic(cnt),'%3.0f') '°'...
+            ', Flow=' num2str(anDataAll.measMeanFlow(cnt),'%2.0f') '\pm' ...
+            num2str(anDataAll.measStdFlow(cnt),'%4.1f') '  l/min'...
+            ''','];
+    end
+    for cnt = anParameter.minPlotIntervall:anParameter.maxPlotIntervall
+        if cnt == anParameter.middleCnt
+            errorbar(anParameter.histBinMiddle, anDataAll.ice.histRealCor(:,cnt), ...
+                anDataAll.ice.histRealErrorCor(:,cnt),...
+                'color', anParameter.plotColorNew(cnt-anParameter.minPlotIntervall+1,:),...
+                'LineWidth',2,'LineStyle','--');
+        else
+            plot(anParameter.histBinMiddle, anDataAll.ice.histRealCor(:,cnt), ...
+                'color', anParameter.plotColorNew(cnt-anParameter.minPlotIntervall+1,:),...
+                'LineWidth',2,'LineStyle','--');
+        end
+    end
+    cnt = anParameter.middleCnt;
+    plot(anParameter.histBinMiddle, anDataAll.artefact.histRealCor(:,cnt), ...
+        'color', anParameter.plotColorNew(cnt-anParameter.minPlotIntervall+1,:),...
+        'LineWidth',2,'LineStyle',':');
+
+    legendString = ['h_legend=' legendString(1:end-1) ', ''Location'', ''EastOutside'');'];
+    eval(legendString);
+    set(h_legend,'FontSize',9);
+    ylabel('number density d(N)/d(log d) [cm^{-3}\mum^{-1}]');
+    xlabel('diameter [\mum]')
+    set(gca,'YScale','log');
+    set(gca,'XScale','log');
+    xlim(gca, [6 anParameter.maxSize]);
+    ylim(gca, [5e-7 1e1]);
+     
+    set(gca,'Position',[0.08 0.13 .38 .85]);
+    set(gcf, 'Units', 'centimeters', 'Position', [0 0 29 13]);
+    set(gcf, 'PaperOrientation', 'landscape', 'PaperSize', [29.7 21], 'PaperPositionMode', 'auto')
+
+    if anParameter.savePlots
+        fileName = [anParameter.ParInfoFiles{1}(1:19) '-SizeSpectra'];
+        fileFolder = fullfile(anParameter.ParInfoFolder, 'Plots');
+        print('-dpng','-r600', fullfile(fileFolder,fileName));
+    end
+end
+
+
+%% Volume Size Spectra Comparision %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 02
+if anParameter.plotShowVolSpectrum
+    figure(2)
+    clf;
+    legendString = 'legend(';
+    for cnt = anParameter.minPlotIntervall:anParameter.maxPlotIntervall
+        if cnt == anParameter.middleCnt
+            errorbar(anParameter.histBinMiddle, anDataAll.water.histRealCor(:,cnt).*(1/6*pi.*anParameter.histBinMiddle.^3)', ...
+                anDataAll.ice.histRealErrorCor(:,cnt).*(1/6*pi.*anParameter.histBinMiddle.^3)', ...
+                'color', anParameter.plotColorNew(cnt-anParameter.minPlotIntervall+1,:),...
+                'LineWidth',2);
+        else
+            plot(anParameter.histBinMiddle, anDataAll.water.histRealCor(:,cnt).*(1/6*pi.*anParameter.histBinMiddle.^3)', ...
+                'color', anParameter.plotColorNew(cnt-anParameter.minPlotIntervall+1,:),...
+                'LineWidth',2);
+        end
+        hold on
+        legendString = [legendString '''' ...
+            num2str(cnt,'%02u')...
+            ': ' anDataAll.timeString{cnt} ''','];
+    end
+    for cnt = anParameter.minPlotIntervall:anParameter.maxPlotIntervall
+        if cnt == anParameter.middleCnt
+            errorbar(anParameter.histBinMiddle, anDataAll.ice.histRealCor(:,cnt).*(1/6*pi.*anParameter.histBinMiddle.^3)', ...
+                anDataAll.ice.histRealErrorCor(:,cnt).*(1/6*pi.*anParameter.histBinMiddle.^3)', ...
+                'color', anParameter.plotColorNew(cnt-anParameter.minPlotIntervall+1,:),...
+                'LineWidth',2,'LineStyle','--');
+        else
+            plot(anParameter.histBinMiddle, anDataAll.ice.histRealCor(:,cnt).*(1/6*pi.*anParameter.histBinMiddle.^3)', ...
+                'color', anParameter.plotColorNew(cnt-anParameter.minPlotIntervall+1,:),...
+                'LineWidth',2,'LineStyle','--');
+        end
+    end
+     cnt = anParameter.middleCnt;
+        plot(anParameter.histBinMiddle, anDataAll.artefact.histRealCor(:,cnt).*(1/6*pi.*anParameter.histBinMiddle.^3)', ...
+            'color', anParameter.plotColorNew(cnt-anParameter.minPlotIntervall+1,:),...
+            'LineWidth',2,'LineStyle',':');
+     
+    legendString = ['h_legend=' legendString(1:end-1) ', ''Location'', ''EastOutside'');'];
+    eval(legendString);
+    set(h_legend,'FontSize',9);
+    
+    ylabel('volume density d(V)/d(log d) [cm^{-3}\mum^{-1}\mum^{3}]');
+    xlabel('diameter [\mum]')
+    set(gca,'YScale','log');
+    set(gca,'XScale','log');
+    xlim(gca,[6 anParameter.maxSize]);
+    ylim(gca,[1e-2 1e4]);
+    
+    set(gca,'Position',[0.08 0.13 .38 .85]);
+    set(gcf, 'Units', 'centimeters', 'Position', [0 0 29 13]);
+    set(gcf, 'PaperOrientation', 'landscape', 'PaperSize', [29.7 21], 'PaperPositionMode', 'auto')
+    
+    if anParameter.savePlots
+        fileName = [anParameter.ParInfoFiles{1}(1:19) '-VolumeSpectra'];
+        fileFolder = fullfile(anParameter.ParInfoFolder, 'Plots');
+        print('-dpng','-r600', fullfile(fileFolder,fileName));
+    end
+end
+
+%% Spatial Distribution Check %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 03
+if anParameter.plotShowSpatDist
+    figure(3);    clf;
+    
+    cnt = anParameter.spatialDisCase;
+    subplot(3,2,1);
+    hold on;
+    [a, b] = hist(anDataAll.xPos{cnt}(anDataAll.partIsReal{cnt}).*1e3,30);
+    a = a./(sum(a)/numel(a))-1;
+    bar(b,a)
+    
+    xlim([-2.2 2.2]);
+    ylim([-.2 .2]);
+    title('Y position frequency');
+    xlabel('Y Position (mm)');
+    ylabel('Relative Count');
+    
+    subplot(3,2,3);
+    hold on;
+    [a b] = hist(anDataAll.yPos{cnt}(anDataAll.partIsReal{cnt}).*1e3,30);
+    a = a./(sum(a)/numel(a))-1;
+    bar(b,a)
+    xlim([-1.8 1.8]);
+    ylim([-.2 .2]);
+    title('X position frequency');
+    xlabel('X Position (mm)');
+    ylabel('Relative Count');
+    
+    subplot(3,2,5);
+    hold on;
+    [a b] = hist(anDataAll.zPos{cnt}(anDataAll.partIsReal{cnt}).*1e3,30);
+    a = a./(sum(a)/numel(a))-1;
+    bar(b,a)
+    ylim([-.6 .6]);
+    title('Z position frequency');
+    xlabel('Z Position (mm)');
+    ylabel('Relative Count');
+    
+    subplot(3,2,[2 4 6]);
+    bln = .1e-3;
+    x = anDataAll.xPos{cnt}(anDataAll.partIsReal{cnt});
+    y = anDataAll.yPos{cnt}(anDataAll.partIsReal{cnt});
+    xrange = min(x):bln:max(x);
+    yrange = min(y):bln:max(y);
+    count = hist2([x;y]',xrange,yrange);
+    count = count./(sum(count(:))/numel(count)) - 1;
+    count = interp2(count,4);
+    [nx, ny] = size(count);
+    xrange = linspace(min(x),max(x),nx).*1e3;
+    yrange = linspace(min(y),max(y),ny).*1e3;
+    %xrange = (xrange(2:end) - bln/2).*1e3;
+    %yrange = (yrange(2:end) - bln/2).*1e3;
+    contourf(yrange,xrange,count);
+    
+    title('Relative Frequency of Occurance');
+    xlabel('X position (mm)');
+    ylabel('Y position (mm)');
+    caxis([-.5 .5]);
+    
+    set(gcf, 'Units', 'normalized');
+    set(gcf, 'OuterPosition', [.6 .3 0.7 0.7])
+    
+    if anParameter.savePlots
+        fileName = [anParameter.ParInfoFiles{1}(1:19) '-SpatialDistribution'];
+        fileFolder = fullfile(anParameter.ParInfoFolder, 'Plots');
+        print('-dpng','-r600', fullfile(fileFolder,fileName));
+    end
+end
+
+%% Number Size Spectra Comparision %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 04
+if anParameter.plotCorrectionCheck
+    figure(4)
+    clf
+    
+    plot(anParameter.histBinMiddleOldSizes, anDataAll.histRealCorOldSizes(:,anParameter.correctionCheckCase), ...
+        anParameter.histBinMiddle, anDataAll.histReal(:,anParameter.correctionCheckCase), ...
+        anParameter.histBinMiddle, anDataAll.histRealCor(:,anParameter.correctionCheckCase), ...
+        'LineWidth',2);
+    
+    legend('Sizes uncorrected', 'Efficiency uncorrected', 'Corrected');
+    ylabel('number density d(N)/d(log d) [cm^{-3}\mum^{-1}]');
+    xlabel('diameter [\mum]')
+    xlim([6 anParameter.maxSize]);
+    ylim([3e-7 1e2]);
+    set(gca,'YScale','log');
+    set(gca,'XScale','log');
+    
+    set(gcf, 'Units', 'normalized');
+    set(gcf, 'OuterPosition', [.9 0 .5 0.5])
+    
+    if anParameter.savePlots
+        fileName = [anParameter.ParInfoFiles{1}(1:19) '-CorrectionComparision'];
+        fileFolder = fullfile(anParameter.ParInfoFolder, 'Plots');
+        print('-dpng','-r600', fullfile(fileFolder,fileName));
+    end
+end
+
+%% TimeSerie Water Content %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 05
+if anParameter.plotTimeWaterContent
+figure(5)
+clf
+    %n = ceil(intervall);
+    clear s;    
+
+    set(gcf,'DefaultLineLineWidth',2);
+    axnumber = 3;
+    for m=1:axnumber
+        axleft = 0.09;
+        axright = 0.10;
+        axtop = 0;
+        axbottom = 0.07;
+        axgap = 0.01;
+        axwidth = 1-axleft-axright;
+        axheight = (1-axbottom-axtop)./axnumber-axgap*(axnumber-1);
+        axPos(m,:) = [axleft axbottom+(m-1)*(axheight+axgap) axwidth axheight];
+    end
+    
+    meanNum = 5;
+    markerSize=60;
+    scLineWidht = 1;
+    plotXLim = [min(anDataAll.timeStart) max(anDataAll.timeStart)];
+    
+%     BTdataAll.timeStartNumUTCall = repmat(BTdataAll.timeStartNumUTC,1,lTraj);
+%     tmp=unique(BTdataAll.timeStartNumUTC);
+%     for cnt = 1:numel(tmp)
+%     BTchoosendata = (BTdataAll.time(:) >= 0 & BTdataAll.lev0All(:) <= 3380 &...
+%         BTdataAll.lev0All(:) >= 3280 & BTdataAll.timeStartNumUTCall(:) == tmp(cnt));
+%     BTplotData.timeUTC(cnt) = tmp(cnt);
+%     BTplotData.IWC(cnt)  = mean(100000*BTdataAll.iwc(BTchoosendata));
+%     BTplotData.LWC(cnt)  = mean(5000*BTdataAll.lwc(BTchoosendata));
+%     BTplotData.temp(cnt)  = mean(BTdataAll.temp(BTchoosendata));
+%     BTplotData.pottemp(cnt)  = mean(BTdataAll.pottemp(BTchoosendata));
+%     BTplotData.humid(cnt)  = mean(BTdataAll.humid(BTchoosendata));
+%     BTplotData.relhumid(cnt)  = mean(BTdataAll.relhumid(BTchoosendata));
+%     BTplotData.mixratio(cnt)  = mean(BTdataAll.mixratio(BTchoosendata));
+%     BTplotData.windspeed(cnt)  = mean(BTdataAll.windspeed(BTchoosendata));
+%     BTplotData.winddirection(cnt)  = mean(BTdataAll.winddirection(BTchoosendata))+180;
+%     BTplotData.IWCstd(cnt)  = std(200000*BTdataAll.iwc(BTchoosendata));
+%     BTplotData.LWCstd(cnt)  = std(5000*BTdataAll.lwc(BTchoosendata));
+%     BTplotData.tempstd(cnt)  = std(BTdataAll.temp(BTchoosendata));
+%     BTplotData.pottempstd(cnt)  = std(BTdataAll.pottemp(BTchoosendata));
+%     BTplotData.humidstd(cnt)  = std(BTdataAll.humid(BTchoosendata));
+%     BTplotData.relhumidstd(cnt)  = std(BTdataAll.relhumid(BTchoosendata));
+%     BTplotData.mixratiostd(cnt)  = std(BTdataAll.mixratio(BTchoosendata));
+%     BTplotData.windspeedstd(cnt)  = std(BTdataAll.windspeed(BTchoosendata));
+%     BTplotData.winddirectionstd(cnt)  = std(BTdataAll.winddirection(BTchoosendata));
+%     end    
+    
+    s(3)=axes('position',axPos(1,:));
+    [ax,h1,h2]= plotyy(anDataAll.timeStart, nanmoving_average(anDataAll.LWContent,meanNum),...
+        anDataAll.timeStart, nanmoving_average(anDataAll.IWContent,meanNum));
+    hold(ax(1),'on')
+    hold(ax(2),'on')
+    scatter(ax(1),anDataAll.timeStart, anDataAll.LWContent, ...        
+        markerSize,'bx','lineWidth',scLineWidht);
+%    plot(ax(1), BTplotData.timeUTC, BTplotData.LWC,'b--');
+%    plot(ax(2), BTplotData.timeUTC, BTplotData.IWC,'--','Color',[0 0.5 0]);
+    scatter(ax(2),anDataAll.timeStart, anDataAll.IWContent, markerSize,'x','lineWidth',scLineWidht,'MarkerEdgeColor',[0 0.5 0]);
+    set(get(ax(1),'Ylabel'),'String',{'Water Content', 'Liquid [g*m^{-3}]'},'fontsize',18,'lineWidth',scLineWidht,'Color','b');
+    set(get(ax(2),'Ylabel'),'String',{'Water Content', 'Ice [g*m^{-3}]'},'fontsize',18,'lineWidth',scLineWidht,'Color',[0 0.5 0]);
+    set(ax(1),'XLim',plotXLim);
+    %'YLim',[0 3],'YTick',[0 0.1 0.2 0.3 0.4 0.5 0.6]);
+    set(ax(2),'XLim',plotXLim,'XTickLabel',[]);
+    %,'YLim',[0 0.8],'YTick',[0 0.1 0.2 0.3 0.4 0.5 0.6]);
+    
+    xlabel('Time (UTC) [h]');
+    datetick(ax(1),'x','HH-MM','keeplimits');
+    datetick(ax(2),'x','HH-MM','keeplimits');
+    plotXTick = get(ax(1),'XTick');
+    
+    s(2)=axes('position',axPos(2,:));
+    [ax, h1, h2]= plotyy(anDataAll.timeStart, nanmoving_average(anDataAll.LWConcentraction,meanNum),...
+        anDataAll.timeStart, nanmoving_average(anDataAll.IWConcentraction*1000,meanNum));
+    hold(ax(1),'on')
+    hold(ax(2),'on')
+    scatter(ax(1),anDataAll.timeStart, anDataAll.LWConcentraction,markerSize,'bx','lineWidth',scLineWidht);
+    scatter(ax(2),anDataAll.timeStart, anDataAll.IWConcentraction*1000,markerSize,'x','lineWidth',scLineWidht,'MarkerEdgeColor',[0 0.5 0]);
+    set(get(ax(1),'Ylabel'),'String',{'Number Concentration', 'Liquid [cm^{-3}]'},'fontsize',18,'lineWidth',scLineWidht,'Color','b');
+    set(get(ax(2),'Ylabel'),'String',{'Number Concentration', 'Ice [l^{-1}]'},'fontsize',18,'lineWidth',scLineWidht,'Color',[0 0.5 0]);
+    set(ax(1),'XLim',plotXLim,'XTick',plotXTick,'XTickLabel',[]);
+        %'YLim',[0 100],'YTick',[0 200 400 600 800 1000 1200 1400 1600 1800 2000 2200]);
+    set(ax(2),'XLim',plotXLim,'XTick',plotXTick,'XTickLabel',[]);
+        %'YLim',[0 600],'YTick',[0 200 400 600 800 1000 1200 1400 1600 1800 2000 2200]);
+    
+    s(1)=axes('position',axPos(3,:));
+    plot(anDataAll.timeStart, nanmoving_average(anDataAll.TWContent,meanNum),'k');
+    hold on
+    plot(anDataAll.timeStart, anDataAll.cdpMean,'b');
+    plot(anDataAll.timeStart, anDataAll.pvmMean,'Color',[0 0.5 0]); 
+    legend('HOLIMO','CDP','PVM');
+%     [ax,h1,h2]= plotyy(anDataAll.timeStart, nanmoving_average(rem(anDataAll.measMeanAzimutSonic+180,360), meanNum),...
+%         anDataAll.timeStart, nanmoving_average(anDataAll.measMeanT, meanNum));
+%     hold(ax(1),'on')
+%     hold(ax(2),'on')
+%     scatter(ax(1),anDataAll.timeStart, rem(anDataAll.measMeanAzimutSonic+180,360),markerSize,'bx','lineWidth',scLineWidht);
+%     scatter(ax(2),anDataAll.timeStart, anDataAll.measMeanT, markerSize,'x','lineWidth',scLineWidht,'MarkerEdgeColor',[0 0.5 0]);
+
+%    plot(ax(1), BTplotData.timeUTC, BTplotData.winddirection,'b--');
+%    plot(ax(2), BTplotData.timeUTC, BTplotData.temp,'--','Color',[0 0.5 0]);
+    %set(get(ax(1),'Ylabel'),'String',{'Wind Direction', 'Azimut [°]'},'fontsize',18,'lineWidth',scLineWidht,'Color','b');
+    %set(get(ax(2),'Ylabel'),'String',{'Air Temperature', '[°C]'},'fontsize',18,'lineWidth',scLineWidht,'Color',[0 0.5 0]);
+    set(get(gca,'Ylabel'),'String',{'Water Content', 'Total [g*m^{-3}]'},'fontsize',18,'lineWidth',scLineWidht,'Color','k');
+    set(gca,'XLim',plotXLim,'XTick',plotXTick,'XTickLabel',[]);
+    %    'YLim',[0 360],'YTick',[0 90 180 270 360]);
+%     set(ax(2),'XLim',plotXLim,'XTick',plotXTick,'XTickLabel',[]);
+%     %    'YLim',[-10 -6],'YTick',[-10 -9 -8 -7 -6]);
+
+    set(gca,'XTickLabel',[]);
+%     set(ax(2),'XTickLabel',[]);
+   
+    
+    set(gcf, 'PaperUnits','centimeters');
+    set(gcf, 'PaperPosition',[0 0 30 20]);
+    set(gcf, 'PaperSize', [30 20]); 
+    if anParameter.savePlots
+        fileName = [anParameter.ParInfoFiles{1}(1:19) '-TimeSerie'];
+        fileFolder = fullfile(anParameter.ParInfoFolder, 'Plots');
+        print('-dpng','-r600', fullfile(fileFolder,fileName));
+    end
+end
+
+%% Contour Plot %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 06
+if anParameter.plotContour
+    f4=figure(4);
+    clf
+    
+    sizeLimit = anParameter.maxSize;
+    contourSizes = anParameter.histBinMiddle;    
+    contourTime = anDataAll.timeStart;
+    plotXLim = [min(contourTime) max(contourTime)];
+     
+    s(2) = subplot(2,1,2);    
+    
+    tmp = repmat((1/6*pi.*anParameter.histBinMiddle.^3)',1,size(anDataAll.histReal,2));
+    contourData = anDataAll.histReal.*tmp;    
+    %conLevelVol = [1 3 10 30 100 300 1000 3000 10000 30000];
+    conLevelVol = 10.^(1:.25:4.5);    
+    [C, h] = contourf(contourTime,contourSizes,log10(contourData), log10(conLevelVol));    
+    colorbar('YTick',[-5 -4 -3 -2 -1 0 1 2 3 4 5]);
+    colormap(jet);
+    
+    for q=1:length(h)
+        set(h(q),'LineStyle','none');
+    end
+    set(gca,'YScale','log','YLim',[6 250],'YTick',[6 10 20 40 60 100 200 400],...
+        'XLim',plotXLim,'Box','on','Layer','top');
+    xlabel('Measurement Time [h]');
+    ylabel('Particle Diameter [\mum]');
+    title('Volume-Weighted Density d(V)/d(log d) [cm^{-3}\mum^{-1}\mum^{3}]')
+    
+    xlabel('Time (UTC) [h]');
+    datetick(gca,'x','HH-MM','keeplimits');
+    plotXTick = get(gca,'XTick');
+    
+    s(1) = subplot(2,1,1);
+    hold on
+    %number density log
+  
+    contourData = anDataAll.histReal;    
+    conLevelListNumLog = 10.^(-5:.25:2.5);    
+    [C, h] = contourf(contourTime, contourSizes, log10(contourData), log10(conLevelListNumLog));    
+    colorbar('YTick',[-5 -4 -3 -2 -1 0 1 2 3 4 5]);
+    colormap(jet);
+
+    for q=1:length(h)
+        set(h(q),'LineStyle','none');
+    end   
+    set(gca,'YScale','log','YLim',[6 250],'YTick',[6 10 20 40 60 100 200 400],...
+        'XLim',plotXLim,'XTick',plotXTick,'XTickLabel',[],'Box','on','Layer','top');
+    ylabel('Particle Diameter [\mum]');
+    
+    title('Number-Weighted Density d(N)/d(log d) [cm^{-3}\mum^{-1}]')    
+
+    linkaxes([s(1) s(2)],'x');
+    annotation(f4,'textbox',[0.92 0.934 0.03 0.05],'String',{'10^{x}'},...
+        'LineStyle','none','FontSize',15);
+    annotation(f4,'textbox',[0.92 0.459 0.03 0.05],'String',{'10^{x}'},...
+        'LineStyle','none','FontSize',15);
+  for cnt = 1:2
+        aPos = get(s(cnt),'pos');
+        aPos(1) = aPos(1)-0.06;
+        aPos(2) = aPos(2)-0.05;
+        aPos(3) = 0.84;
+        aPos(4) = 0.363;
+        set(s(cnt),'pos',aPos);
+  end
+    set(gcf, 'PaperUnits','centimeters');
+    set(gcf, 'PaperPosition',[0 0 30 15]);
+    set(gcf, 'PaperSize', [30 15]);
+    if anParameter.savePlots
+        fileName = [anParameter.ParInfoFiles{1}(1:19) '-ContourPlot'];
+        fileFolder = fullfile(anParameter.ParInfoFolder, 'Plots');
+        print('-dpng','-r600', fullfile(fileFolder,fileName));
+    end
+end

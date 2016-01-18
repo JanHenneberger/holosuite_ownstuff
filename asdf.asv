@@ -1,0 +1,16 @@
+ tmp=find(allData{1}.TWContent > 5,1)
+ [allData{1}.NumberReal(tmp)  allData{1}.NumberReal(tmp-1)  allData{1}.NumberReal(tmp+1)]
+ [allData{1}.sampleVolumeReal(tmp)  allData{1}.sampleVolumeReal(tmp-1) allData{1}.sampleVolumeReal(tmp+1)] 
+ [allData{1}.TWContent(tmp)  allData{1}.TWContent(tmp-1)  allData{1}.TWContent(tmp+1)]
+ 
+%  allData{1}.LWContent(tmp)
+%  allData{1}.LWContent(tmp-1)
+%  allData{1}.LWContent(tmp+1)
+%  
+%  allData{1}.IWContent(tmp)
+%  allData{1}.IWContent(tmp-1)
+%  allData{1}.IWContent(tmp+1)
+ 
+  [allData{1}.TWContent(tmp)-allData{1}.LWContent(tmp)- allData{1}.IWContent(tmp) ... 
+  allData{1}.TWContent(tmp-1)-allData{1}.LWContent(tmp-1)- allData{1}.IWContent(tmp-1) ...
+  allData{1}.TWContent(tmp+1)-allData{1}.LWContent(tmp+1)- allData{1}.IWContent(tmp+1)]
