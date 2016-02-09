@@ -22,7 +22,7 @@ function varargout = GUISatelite(varargin)
 
 % Edit the above text to modify the response to help GUISatelite
 
-% Last Modified by GUIDE v2.5 27-Jan-2016 14:38:10
+% Last Modified by GUIDE v2.5 02-Feb-2016 12:12:06
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -67,6 +67,14 @@ else
     handles.meteoJFJ = wolke.importMeteoData('Z:\3_Data\CLACE2013\MeteoSwissJFJ\order_40175_data.txt');
 end
 
+if numel(varargin) > 2
+    handles.holimo = varargin{3};
+else
+    handles.holimo = load('Z:\6_Auswertung\ALL\Neusten\HOLIMO_100sec.mat');
+    handles.holimo = handles.holimo.outFile;
+end
+
+handles.saveScreenpath = 'Z:\6_Auswertung\ALL\RadarSatObsPlot';
 handles.basepath = 'Z:\3_Data\CLACE2013\JFJ_Remote';
 handles.DWDpath = 'DWD_charts';
 handles.Radarpath = 'Radar';
@@ -85,6 +93,9 @@ handles.SatNr = 24;
 handles.stepSat = 1;
 
 handles.stepAll = 2;
+
+%create UIFigure for HOLIMO Data
+handles.fHOLIMO = figure('Position',[2000,0, 1600,1000],'NumberTitle','off','MenuBar','none');
 
 handles = refreshAll(handles);
 
@@ -105,6 +116,14 @@ function varargout = GUISatelite_OutputFcn(hObject, eventdata, handles)
 % Get default command line output from handles structure
 varargout{1} = handles.output;
 
+% --- Executes when user attempts to close figure1.
+function figure1_CloseRequestFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+close(handles.fHOLIMO)
+% Hint: delete(hObject) closes the figure
+delete(hObject);
 
 
 function editTextYear_Callback(hObject, eventdata, handles)
@@ -378,12 +397,25 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
+% --- Executes on button press in pushbuttonSaveScreen.
+function pushbuttonSaveScreen_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbuttonSaveScreen (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+dateString = datestr(handles.datenum,'yyyy-mm-dd');
+
+nameSat = fullfile(handles.saveScreenpath, [dateString '_SatRad.jpg']);
+nameHolimo = fullfile(handles.saveScreenpath, [dateString, '_Holimo.jpg']);
+screencapture(handles.figure1,nameSat)
+screencapture(handles.fHOLIMO,nameHolimo)
 
 function handles = refreshAll(handles)
 handles = updatedate(handles);
 plotRadar(handles);
 plotSat(handles);
 plotRest(handles);
+plotHolimo(handles);
 
 function handles = refreshRadar(handles)
 handles = updatedate(handles);
@@ -490,7 +522,6 @@ catch
     warning([path, 'does not exists'])
 end
 
-
 function plotRest(handles)
 dateVector =datevec(handles.datenum);
 try
@@ -521,16 +552,20 @@ try
     station = fieldnames(handles.meteoPrecip);
     starttime = datenum([handles.year handles.month handles.day]);
     endtime = starttime + 1;
+    plotXLim = [starttime endtime];
     
     hold(ax,'on')
     for cnt = 1:numel(station)
         datay = handles.meteoPrecip.(station{cnt}).Precipitation10min;
+        datay(datay == 0) = nan;
         datax = handles.meteoPrecip.(station{cnt}).datenum;
-        idx = datax > starttime & datax < endtime;
-        plot(datax(idx),datay(idx),'Parent',ax);
+        idx = datax > starttime & datax < endtime;        
+        plot(datax(idx),datay(idx),'Parent',ax,'Marker','o','LineStyle','none','MarkerSize',10);
     end
-    legend(ax,station)
-    datetick(ax)
+    set(ax,'XLim',plotXLim);
+    legend(ax, station)
+    datetick(ax,'x','HH-MM','keeplimits')
+    box(ax, 'on')
 catch
     text(0.5, 0.5, 'not available','Parent',ax)
     warning([path, 'does not exists'])
@@ -560,7 +595,7 @@ try
     ylabel(a(1),'Temperature [°C]') % left y-axis
     ylabel(a(2),'Wind speed [m s^{-1}]') % right y-axis
     legend(ax,{'Temperature';'Wind speed'})
-    datetick(ax)
+    datetick(ax,'x','HH-MM','keeplimits')
 catch
     text(0.5, 0.5, 'not available','Parent',ax)
     warning([path, 'does not exists'])
@@ -589,8 +624,115 @@ try
     ylabel(a(2),'radiation and sunshine [%]') % right y-axis
    
     legend(ax,{'rel. Humidity';'global Radiation';'Sunshine Duration'})
-    datetick(ax)
+    datetick(ax,'x','HH-MM','keeplimits')
 catch
     text(0.5, 0.5, 'not available','Parent',ax)
+    warning([path, 'does not exists'])
+end
+
+function plotHolimo(handles)
+try
+    f = handles.fHOLIMO;
+    clf(f)
+    
+    
+    data = handles.holimo;
+    
+    meanNum = 1;
+    markerSize=60;
+    scLineWidht = 1;
+    
+    plotColor =flipud(lbmap(2,'RedBlue'));
+    starttime = datenum([handles.year handles.month handles.day]);
+    endtime = starttime + 1;
+    plotXLim = [starttime endtime];    
+    
+    axnumber = 5;
+    for m=1:axnumber
+        axleft = 0.11;
+        axright = 0.09;
+        axtop = -0.22;
+        axbottom = 0.09;
+        axgap = 0.01;
+        axwidth = 1-axleft-axright;
+        axheight = (1-axbottom-axtop)./axnumber-axgap*(axnumber-1);
+        axPos(m,:) = [axleft axbottom+(m-1)*(axheight+axgap) axwidth axheight];
+    end
+    
+    ax=axes('position',axPos(1,:),'Parent',f);
+    axes(ax)
+    plot(gca, data.time, nanmoving_average(...
+        data.IWContentTWContentRatio,meanNum),...
+        'LineWidth',1, 'Color',plotColor(1,:))  
+    set(gca,'XLim',plotXLim , ...
+        'YLim',[0 1.1],'YTick',[0 0.25 0.5 0.75 1], ...
+        'ycolor', plotColor(1,:));
+    datetick(gca,'x','HH-MM','keeplimits');
+    xlabel('Time (UTC) [h]');
+    ylabel('IWC/TWC')
+    plotXTick = get(gca,'XTick');
+    
+    hold on
+    
+    ax=axes('position',axPos(2,:),'Parent',f);
+    axes(ax)
+    [ax,h1,h2]= plotyy(data.time, nanmoving_average(data.LWContent,meanNum),...
+        data.time, nanmoving_average(data.IWContent,meanNum));
+    set(h1,'LineWidth',1, 'Color',plotColor(1,:))  
+    set(h2,'LineWidth',1, 'Color',plotColor(2,:))
+    set(ax(1),'XLim',plotXLim,'XTick',plotXTick,'XTickLabel',[],...
+        'YLim',[0 1.1],'YTick',[0  0.2  0.4 0.6 0.8 1], 'ycolor',plotColor(1,:));
+     set(ax(2),'XLim',plotXLim,'XTick',plotXTick,'XTickLabel',[],...
+         'YLim',[0 1.1],'YTick',[0  0.2  0.4 0.6 0.8 1], 'ycolor',plotColor(2,:));  
+    hold(ax(1),'on')
+    hold(ax(2),'on')
+    set(get(ax(1),'Ylabel'),'String',{'Water Content', 'Liquid [g*m^{-3}]'},...
+        'fontsize',11,'lineWidth',scLineWidht);
+    set(get(ax(2),'Ylabel'),'String',{'Water Content', 'Ice [g*m^{-3}]'},...
+        'fontsize',11,'lineWidth',scLineWidht);
+    set(ax(1),'XLim',plotXLim,'XTick',plotXTick,'XTickLabel',[],...
+        'YLim',[0 1.1],'YTick',[0  0.2  0.4 0.6 0.8 1], 'ycolor',plotColor(1,:));
+    set(ax(2),'XLim',plotXLim,'XTick',plotXTick,'XTickLabel',[],...
+        'YLim',[0 1.1],'YTick',[0 0.2 0.4  0.6 0.8 1], 'ycolor',plotColor(2,:));   
+    
+    ax=axes('position',axPos(3,:),'Parent',f);
+    axes(ax)
+    [ax, h1, h2]= plotyy(data.time, nanmoving_average(data.LWMeanD*1e6,meanNum),...
+        data.time, nanmoving_average(data.IWMeanD*1e6,meanNum));
+    set(h1,'LineWidth',1,'Color',plotColor(1,:))  
+    set(h2,'LineWidth',1,'Color',plotColor(2,:))
+    set(ax(1),'XLim',plotXLim,'XTick',plotXTick,'XTickLabel',[],...
+        'YLim',[5 30],'YTick',[5 10 15 20 25],'ycolor',plotColor(1,:));
+    set(ax(2),'XLim',plotXLim,'XTick',plotXTick,'XTickLabel',[],...
+        'YLim',[0 100],'YTick',[0 20 40 60 80],'ycolor',plotColor(2,:));
+    hold(ax(1),'on')
+    hold(ax(2),'on')
+    set(get(ax(1),'Ylabel'),'String',{'Diameter', 'Liquid [cm^{-3}]'},...
+        'fontsize',11,'lineWidth',scLineWidht,'Color',plotColor(1,:));
+    set(get(ax(2),'Ylabel'),'String',{'Diameter', 'Ice [cm^{-3}]'},...
+        'fontsize',11,'lineWidth',scLineWidht,'Color',plotColor(2,:));
+    set(ax(1),'XLim',plotXLim,'XTick',plotXTick,'XTickLabel',[],...
+        'YLim',[5 30],'YTick',[5 10 15 20 25],'ycolor',plotColor(1,:));
+    set(ax(2),'XLim',plotXLim,'XTick',plotXTick,'XTickLabel',[],...
+        'YLim',[0 100],'YTick',[0 20 40 60 80],'ycolor',plotColor(2,:));
+    
+    ax=axes('position',axPos(4,:),'Parent',f);
+    axes(ax)
+    [ax, h1, h2]= plotyy(data.time, nanmoving_average(data.LWConcentration,meanNum),...
+        data.time, nanmoving_average(data.IWConcentration,meanNum));
+    set(h1,'LineWidth',1,'Color',plotColor(1,:))  
+    set(h2,'LineWidth',1,'Color',plotColor(2,:))
+    set(ax(1),'XLim',plotXLim,'XTick',plotXTick,'XTickLabel',[],...
+        'YLim',[0 250],'YTick',[0 50 100 150 200],'ycolor',plotColor(1,:));
+    set(ax(2),'XLim',plotXLim,'XTick',plotXTick,'XTickLabel',[],...
+        'YLim',[0 10],'YTick',[0 2 4 6 8],'ycolor',plotColor(2,:));
+    hold(ax(1),'on')
+    hold(ax(2),'on')
+    set(get(ax(1),'Ylabel'),'String',{'Number Concentration', ...
+        'Liquid [cm^{-3}]'},'fontsize',11,'lineWidth',scLineWidht,'Color',plotColor(1,:));
+    set(get(ax(2),'Ylabel'),'String',{'Number Concentration', ...
+        'Ice [cm^{-3}]'},'fontsize',11,'lineWidth',scLineWidht,'Color',plotColor(2,:));
+catch
+    text(0.5, 0.5, 'not available','Parent',f)
     warning([path, 'does not exists'])
 end
