@@ -40,6 +40,21 @@ outFile.meteoPressure = anData.meteoPressure(chosenData);
 
 save(fullfile(anData.saveDir,fileName),'outFile');
 
+
+
+outTime = outFile.time;
+outSize = size(outTime);
+outFields = fieldnames(outFile);
+for cnt = 2:numel(outFields)
+    tmpData = outFile.(outFields{cnt});
+    fieldSize = size(tmpData);
+    if all(fieldSize == outSize)
+        outData.(outFields{cnt}) = tmpData; 
+    end
+end
+tsHOLIMO2 = timeserie(outTime, outData);
+save(fullfile(anData.saveDir,[fileName '_tsData.mat']),'tsHOLIMO2');
+
 timeVec = anData.timeVecStart(:,chosenData);
 VarNames = {'DateNum' 'Year' 'Month' 'Day' 'Hour' 'Minute' 'Second'...
     'LWMeanD' 'LWConcentration' 'LWContent' ...
