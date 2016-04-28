@@ -172,17 +172,18 @@ anData.plotSpectra = 0;
 anData.plotIceFraction = 0;
 anData.plotRest = 0;
 anData.plotCaseScatter = 0;
-anData.plotCaseScatterPaper = 0;
+anData.plotCaseScatterPaper = 1;
 anData.plotStatistics =0;
-anData.plotPaper = 0;
-anData.plotNorthSouth = 0;
+anData.plotPaper = 1;
+anData.plotNorthSouth =0;
 anData.plotYang = 0;
-anData.plotUlrike = 0;
+anData.plotUlrike = 1;
 anData.plotUpdraft = 0;
 anData.exportData = 0;
 anData.plotIceWind = 0;
 anData.plotBoxplotUp= 0;
 anData.plotPaperUlrike = 1;
+anData.plotBoxplotCloudPhase = 1;
 
 anData.plotTitle = 0;
 

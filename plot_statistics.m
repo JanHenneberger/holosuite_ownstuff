@@ -284,11 +284,14 @@ anData.windDirectionStats = makeCaseStats(anData, anData.oWindDirection,'windDir
 % caseYear.IWCStdMean = grpstats(real(anData.IWContent(tmpInt)),oTmp,'sem');
 
 %% Korolev updraft calculation
-[anData.caseStats.updraft, anData.caseStats.Niri] = updraftKorolev(...
+[anData.caseStats.updraft, anData.caseStats.Niri, anData.caseStats.glaciationTime] ...
+    = updraftKorolev(...
         anData.caseStats.PressureMean*1e2,...
         anData.caseStats.TempMean+273.14,...
         abs(anData.caseStats.IWConcMean)*1e6,...
-        abs(anData.caseStats.IWMeanMaxDMean)/2);
+        abs(anData.caseStats.IWMeanMaxDMean)/2,...
+        abs(anData.caseStats.LWCMean/1000),...
+        abs(anData.caseStats.IWCMean/1000));
 
 anData = includeUpdraftKorolev(anData);
 anData.uz = anData.uz2;
@@ -399,7 +402,19 @@ end
 %Scatter plot by cloud cases - Temperature Paper
 cntFig = cntFig+1;
 if anData.plotPaperUlrike
-    plot_boxplotIceConc(anData,cntFig);    
+    plot_boxplotIceConc(anData,cntFig);
+end
+
+
+if anData.plotBoxplotCloudPhase
+    
+    %%Boxplot Liquid clouds      
+    cntFig = cntFig+1;
+    plot_boxplotCloudPhase(cntFig, anData,'Liquid')
+     cntFig = cntFig+1;
+    plot_boxplotCloudPhase(cntFig, anData,'Mixed')   
+    cntFig = cntFig+1;
+    plot_boxplotCloudPhase(cntFig, anData,'Ice')
 end
 
 %% Scatter plot for Yang Paper
