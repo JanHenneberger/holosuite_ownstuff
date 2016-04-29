@@ -1,4 +1,4 @@
-function plot_ScatterUpdraftOlga2(anData,cntFig)
+function plot_ScatterUpdraftOlga3(anData,cntFig)
 %UNTITLED20 Summary of this function goes here
 %   Detailed explanation goes here
     set(0,'DefaultLineLineWidth',1.1);

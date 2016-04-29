@@ -19,7 +19,8 @@ set(a(1), 'MarkerFaceColor', 'w')
 set(a(2), 'MarkerFaceColor', 'w')
 plot([0 1],[0 1],'Color', plotColor(1,:))
 plot([0 1],[0 1],'Color', plotColor(2,:))
-legend(flipud(unique(char(anData.caseStats.oWindDirection),'rows')),'location','NorthWest')
+%legend(flipud(unique(char(anData.caseStats.oWindDirection),'rows')),'location','NorthWest')
+legend({'South-east wind cases';'North-west wind cases'},'location','NorthWest')
 plotColorIN = lbmap(5,'BrownBlue');
 %scatter([-32 -32 -32 -32], log([1.6 0.47 0.68 4.8]/1000),25,plotColorIN(2,:),'filled')
 

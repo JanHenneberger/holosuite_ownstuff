@@ -16,8 +16,9 @@ yvar = anData.caseStats.IWCTWCMean;
 
 plot([0 0],[0 1],'Color', plotColor(2,:))
 plot([0 0],[0 1],'Color', plotColor(1,:))
-legend(flipud(unique(char(anData.caseStats.oWindDirection),'rows')),'location','SouthWest')
-    
+%legend(flipud(unique(char(anData.caseStats.oWindDirection),'rows')),'location','SouthWest')
+legend({'South-east wind cases';'North-west wind cases'},'location','SouthWest')
+
 ylim([0 1])
 ylabel('IWC/TWC')
 

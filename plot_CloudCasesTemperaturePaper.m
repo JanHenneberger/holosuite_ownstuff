@@ -82,8 +82,9 @@ function plot_CloudCasesTemperaturePaper(anData,cntFig)
     l= findobj(gcf,'tag','legend'); 
     l.Position(1) = 0.67;
     l.FontSize = 9;
+    l.String = {'South-East wind cases';'North-west wind cases'};
     %set(l,'location','northeastoutside','fontsize',9);
-    
+    l.Position = l.Position + [0.05 0 0 0];
     
     xlabel('Temperature [°C]')
     xlim([-35 0])
