@@ -172,7 +172,7 @@ if (anData.plotIceFraction && anData.plotNorthSouth) || anData.plotPaper
 end
 
 cntFig = cntFig+1;
-if anData.plotIceFraction || anData.plotPaper
+if anData.plotIceFraction || anData.plotPaper || anData.plotPaperUlrike
     figure
     gcf
     subplot(2,2,1)
@@ -199,6 +199,7 @@ cntFig = cntFig+1;
 if anData.plotIceFraction || anData.plotPaper  || anData.plotUlrike
     plot_IceFractionByWindDirection(anData, cntFig)    
 end
+
 
 %% Boxplots
 if anData.plotBoxplot
@@ -297,6 +298,19 @@ anData = includeUpdraftKorolev(anData);
 anData.uz = anData.uz2;
 %scatter(anData.Niri,anData.Niri2./anData.Niri)
 
+Y = anData.glaciationTime;
+labels={'< 1 s','1-10 s','10-100 s','100-1000 s','1000-10000 s','10000-100000 s'};
+edges=([0.00000001 1 10 100 1000 10000 100000]);
+anData.oGlactiationTime=ordinal(abs(Y),labels,[],edges);
+anData.oGlactiationTime = droplevels(anData.oGlactiationTime);
+
+cntFig = cntFig+1;
+if anData.plotPaperUlrike
+    plot_GlaciationTimeByWindDirection(anData, cntFig)    
+end
+
+
+
 %updraftv velocity histogramm for intervalls
 cntFig = cntFig+1;
 if anData.plotUpdraft
@@ -337,19 +351,25 @@ end
 
 %Scatter plot by intervalls Olga - updraft velocitie
 cntFig = cntFig+1;
-if anData.plotUpdraft || anData.plotPaperUlrike
+if anData.plotUpdraft 
     plot_ScatterUpdraftOlga(anData, cntFig)    
 end
-if anData.plotUpdraft || anData.plotPaperUlrike
+if anData.plotUpdraft 
     plot_ScatterUpdraftOlga2(anData, cntFig)    
 end
 if anData.plotUpdraft || anData.plotPaperUlrike
     plot_ScatterUpdraftOlga3(anData, cntFig)    
 end
+if  anData.plotPaperUlrike
+    plot_ScatterUpdraftOlga4(anData, cntFig)    
+end
+if  anData.plotPaperUlrike
+    plot_ScatterUpdraftOlga5(anData, cntFig)    
+end
 
 %Scatter plot by cloud cases - Temperature
 cntFig = cntFig+1;
-if anData.plotCaseScatter
+if anData.plotCaseScatter 
     plot_CloudCasesTemperature(anData,cntFig);    
 end
 
@@ -364,14 +384,14 @@ set(0,'DefaultAxesFontSize',9);
 
 %Scatter plot by cloud cases - WindSpeed Paper
 cntFig = cntFig+1;
-if anData.plotCaseScatterPaper
+if anData.plotCaseScatterPaper 
     plot_CloudCasesWindSpeedPaper(anData,cntFig);
 end
 
 
 %Scatter plot by cloud cases - Temperature Paper
 cntFig = cntFig+1;
-if anData.plotCaseScatterPaper
+if anData.plotCaseScatterPaper || anData.plotPaperUlrike
     plot_CloudCasesTemperaturePaper(anData,cntFig);    
 end
 
@@ -389,7 +409,7 @@ end
 
 %Scatter plot by cloud cases - Temperature Paper
 cntFig = cntFig+1;
-if anData.plotPaperUlrike
+if anData.plotPaper
     plot_boxplotTemperatureIWCTWC(anData,cntFig);    
 end
 
@@ -406,7 +426,7 @@ if anData.plotPaperUlrike
 end
 
 
-if anData.plotBoxplotCloudPhase
+if anData.plotBoxplotCloudPhase 
     
     %%Boxplot Liquid clouds      
     cntFig = cntFig+1;
@@ -415,6 +435,11 @@ if anData.plotBoxplotCloudPhase
     plot_boxplotCloudPhase(cntFig, anData,'Mixed')   
     cntFig = cntFig+1;
     plot_boxplotCloudPhase(cntFig, anData,'Ice')
+end
+
+if anData.plotPaperUlrike
+    cntFig = cntFig+1;
+    plot_boxplotPhaseAndDirection(cntFig, anData)
 end
 
 %% Scatter plot for Yang Paper
