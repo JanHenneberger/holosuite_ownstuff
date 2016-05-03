@@ -1,4 +1,4 @@
-function plot_GlaciationTimeByWindDirection( anData, cntFig )
+function plot_GlaciationTimeByWindDirectionAll( anData, cntFig )
 %UNTITLED7 Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -12,8 +12,8 @@ function plot_GlaciationTimeByWindDirection( anData, cntFig )
     plotColor = anData.plotColorWindDir;
     plotColor = [repmat(plotColor(1,:),3,1); repmat(plotColor(2,:),3,1)];
     lineSt = {'--','-',':','--','-',':'};
-    legendString = {'South-east/Liquid'; 'South-east wind cases'; 'South-east/Ice'; ...
-        'North-west/Liquid'; 'North-west wind cases'; 'North-west/Ice'};
+    legendString = {'South-east/Liquid'; 'South-east/Mixed'; 'South-east/Ice'; ...
+        'North-west/Liquid'; 'North-west/Mixed'; 'North-west/Ice'};
     hold on
     
     
@@ -31,8 +31,7 @@ function plot_GlaciationTimeByWindDirection( anData, cntFig )
     linBinWidth = uperSizes - lowerSizes;
     %bin width on a log scale
     logBinWidth = log(uperSizes) - log(lowerSizes);
-    chosen = [1 2 3 4 5 6];
-    chosen = [2 5];
+    chosen = [1 2 3 4 5 6];    
 for cnt = chosen
     var = anData.glaciationTime(cat==labels{cnt} & anData.chosenData);
     %histogram(var, bins, 'Normalization','pdf','DisplayStyle','stairs');
@@ -41,19 +40,18 @@ for cnt = chosen
     %stairs(0.5*uperSizes + 0.5*lowerSizes, counts/frequency(cnt)./logBinWidth,...
     %    'LineStyle',lineSt{cnt},'Color',plotColor(cnt,:));
     
-    %for all
-%         stairs(0.5*uperSizes + 0.5*lowerSizes, counts/frequency(cnt),...
-%         'LineStyle',lineSt{cnt},'Color',plotColor(cnt,:));
     
-    %for only MPC
-    stairs(0.5*uperSizes + 0.5*lowerSizes, counts/sum(counts),...
-       'LineStyle',lineSt{cnt},'Color',plotColor(cnt,:));
+    stairs(0.5*uperSizes + 0.5*lowerSizes, counts/frequency(cnt),...
+        'LineStyle',lineSt{cnt},'Color',plotColor(cnt,:));
+    
+
 end
 
     legend(legendString(chosen),'fontSize',9, 'Location', 'northwest')
     set(gca,'XScale','log');
-    set(gca,'XLim',[10 10000])
-    set(gca,'YLim',[0 .35])
+    set(gca,'XLim',[minVal 40000])
+       set(gca, 'XTickLabel',{'0.001';'0.01';'0.1';'1';'10';'100';'1000';'10000';},'XTick',[0.001 0.01 0.1 1 10 100 1000 10000])
+    set(gca,'YLim',[0 .55])
     xlabel('Glaciation time [s]')
     ylabel('PDF')
     if anData.plotTitle
@@ -67,7 +65,7 @@ end
     set(gcf, 'PaperSize', [13 10]);
     
     if anData.savePlots
-        fileName = 'Frequency_GlaciationTimeByWindDirection';
+        fileName = 'Frequency_GlaciationTimeByWindDirectionAll';
         print(gcf,'-dpdf','-r600', fullfile(anData.saveDir,fileName));
     end
     

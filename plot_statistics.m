@@ -299,17 +299,22 @@ anData.uz = anData.uz2;
 %scatter(anData.Niri,anData.Niri2./anData.Niri)
 
 Y = anData.glaciationTime;
+maxVal = nanmax(Y(anData.chosenData));
+anData.glaciationTime(isnan(Y)) = maxVal;
 labels={'< 1 s','1-10 s','10-100 s','100-1000 s','1000-10000 s','10000-100000 s'};
 edges=([0.00000001 1 10 100 1000 10000 100000]);
-anData.oGlactiationTime=ordinal(abs(Y),labels,[],edges);
+anData.oGlactiationTime=ordinal(abs(anData.glaciationTime),labels,[],edges);
 anData.oGlactiationTime = droplevels(anData.oGlactiationTime);
 
-cntFig = cntFig+1;
+
 if anData.plotPaperUlrike
-    plot_GlaciationTimeByWindDirection(anData, cntFig)    
+    cntFig = cntFig+1;
+    plot_GlaciationTimeByWindDirection(anData, cntFig)
+    cntFig = cntFig+1;
+    plot_GlaciationTimeByWindDirectionAll(anData, cntFig) 
+    cntFig = cntFig+1;
+    plot_GlaciationTimeByWindDirectionEach(anData, cntFig)  
 end
-
-
 
 %updraftv velocity histogramm for intervalls
 cntFig = cntFig+1;
