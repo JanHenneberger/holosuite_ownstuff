@@ -1,7 +1,9 @@
 function plot_GlaciationTimeByWindDirectionNorm( anData, cntFig )
 %UNTITLED7 Summary of this function goes here
 %   Detailed explanation goes here
-
+    set(0,'DefaultLineLineWidth',1.3);
+    set(0,'DefaultAxesLineWidth',1);
+    
     figure(cntFig)
     cat = anData.oWindDirection.*anData.oCloudPhase;
     labels = getlabels(cat);
@@ -12,8 +14,8 @@ function plot_GlaciationTimeByWindDirectionNorm( anData, cntFig )
     plotColor = anData.plotColorWindDir;
     plotColor = [repmat(plotColor(1,:),3,1); repmat(plotColor(2,:),3,1)];
     lineSt = {'--','-',':','--','-',':'};
-    legendString = {'South-east/Liquid'; 'South-east wind cases'; 'South-east/Ice'; ...
-        'North-west/Liquid'; 'North-west wind cases'; 'North-west/Ice'};
+    legendString = {'South-east/Liquid'; 'SE wind cases'; 'South-east/Ice'; ...
+        'North-west/Liquid'; 'NW wind cases'; 'North-west/Ice'};
     hold on
     
     

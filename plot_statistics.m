@@ -308,14 +308,15 @@ anData.oGlactiationTime = droplevels(anData.oGlactiationTime);
 
 
 if anData.plotPaperUlrike
-    cntFig = cntFig+1;
-    plot_GlaciationTimeByWindDirection(anData, cntFig)    
+    
+    %cntFig = cntFig+1;
+    %plot_GlaciationTimeByWindDirection(anData, cntFig)    
     cntFig = cntFig+1;
     plot_GlaciationTimeByWindDirectionNorm(anData, cntFig)
-    cntFig = cntFig+1;
-    plot_GlaciationTimeByWindDirectionAll(anData, cntFig) 
-    cntFig = cntFig+1;
-    plot_GlaciationTimeByWindDirectionEach(anData, cntFig)  
+    %cntFig = cntFig+1;
+    %plot_GlaciationTimeByWindDirectionAll(anData, cntFig) 
+    %cntFig = cntFig+1;
+    %plot_GlaciationTimeByWindDirectionEach(anData, cntFig)  
 end
 
 %updraftv velocity histogramm for intervalls

@@ -6,6 +6,8 @@ figure(cntFig)
 tmpInt = anData.chosenData & isfinite(anData.TWContent) & ~(anData.oTemperature=='-25 to -20°C' & anData.oWindDirection=='South wind');
 group1 = anData.oTemperature(tmpInt);
 group2 = anData.oWindDirection(tmpInt);
+group2 = renamecats(group2,'North wind','NW wind');
+group2 = renamecats(group2,'South wind','SE wind');
 group = {group1,group2};
 yvar = anData.IWContent(tmpInt)./anData.TWContent(tmpInt);
 pos = anData.caseStats.TempMean;
@@ -17,7 +19,7 @@ yvar = anData.caseStats.IWCTWCMean;
 plot([0 0],[0 1],'Color', plotColor(2,:))
 plot([0 0],[0 1],'Color', plotColor(1,:))
 %legend(flipud(unique(char(anData.caseStats.oWindDirection),'rows')),'location','SouthWest')
-legend({'South-east wind cases';'North-west wind cases'},'location','SouthWest')
+%legend({'South-east wind cases';'North-west wind cases'},'location','SouthWest')
 
 ylim([0 1])
 ylabel('IWC/TWC')
