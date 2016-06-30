@@ -1,4 +1,4 @@
-function [uz, Niri, tauG, tauG2]=updraftKorolev(p,T,Ni,ri,LWC,IWC)
+function [uz, Niri, tauG, Tw]=updraftKorolev(p,T,Ni,ri,LWC,IWC)
 %% calculates necassry updraft velocities in MPCs (Paper Korolev, 2008) 
 % output
 % uz  = updraft velocity [m s-1]
@@ -23,11 +23,20 @@ R_v = 461.5;            %J/kgK / specific gas constant of water vapor
 E_w = 611.7*exp(-(L_w./R_v).*(1./T - 1./273)); %Pa / saturation pressure over water
 E_i = 611.7*exp(-(L_i./R_v).*(1./T - 1./273)); %Pa / saturation pressure over ice
 
+%mixing ratio
 q_v = 0.622*E_w./(p-E_w);
 
-c_p = (1 + 0.87*q_v)*1003;     %J/kgK   
-                           
-R_a = (1 + 0.61*q_v)*287.058;   %J/kgK             
+%specific heat of dry air
+c_pd = 1003; %J/kgK
+
+%of wet air
+c_p = (1 + 0.87*q_v)*c_pd;     %J/kgK 
+
+%specific gas constant of dry air
+R_sd = 287.058; %J/kgK  
+
+%of wet air
+R_a = (1 + 0.61*q_v)*R_sd;   %J/kgK             
 
 %Thermal conductivity of water vapor in air
 k = 4.1868e-3*(5.69+0.017*(T-273.15));  %W/(m*K)
@@ -64,5 +73,8 @@ Ai = (L_i.^2./(k.*R_v.*T.^2)+R_v.*T./(E_i.*D)).^(-1); %ms/kg
 
 tauG = (4*pi*c.*Ai.*Si).^(-1).*(9*pi*rho_i/2)^(1/3).*...
     ( ((LWC+IWC)./Ni).^(2/3) - (IWC./Ni).^(2/3) );
+
+%wet adiabatic lapse rate
+Tw = g * (1 + L_w.*q_v./R_sd./T) ./ (c_pd + L_w.^2.*q_v./R_v./T.^2); %K/m
 end
 
