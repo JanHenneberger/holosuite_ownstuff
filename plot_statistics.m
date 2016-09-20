@@ -175,19 +175,19 @@ cntFig = cntFig+1;
 if anData.plotIceFraction || anData.plotPaper || anData.plotPaperUlrike
     figure
     gcf
-    subplot(2,2,1)
-    plot_IceFractionByTemperature(anData); 
-    subplot(2,2,2)
+%     subplot(2,2,1)
+%     plot_IceFractionByTemperature(anData); 
+    subplot(1,3,1)
     plot_IceFractionByTemperatureKorolev(anData); 
-    subplot(2,2,3)
+    subplot(1,3,2)
     anData.chosenWindDirection = 'North wind';
     plot_IceFractionByTemperautreWindDirection(anData);  
-    subplot(2,2,4)
+    subplot(1,3,3)
     anData.chosenWindDirection = 'South wind';
     plot_IceFractionByTemperautreWindDirection(anData); 
     set(gcf, 'PaperUnits','centimeters');
-    set(gcf, 'PaperPosition',[0 0 26 20]);
-    set(gcf, 'PaperSize', [26 20]);
+    set(gcf, 'PaperPosition',[0 0 36 10]);
+    set(gcf, 'PaperSize', [36 10]);
     if anData.savePlots
         fileName = ['All_IceFraction_TempAll'];
         print(gcf,'-dpdf','-r600', fullfile(anData.saveDir,fileName));
@@ -413,7 +413,7 @@ end
 % cntFig = cntFig+1;
 % if anData.plotPaperUlrike
 %     plot_CloudCasesTemperatureIWCTWC2(anData,cntFig);    
-% end
+%end
 
 %Scatter plot by cloud cases - Temperature Paper
 cntFig = cntFig+1;

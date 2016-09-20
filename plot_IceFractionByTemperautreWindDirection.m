@@ -43,9 +43,9 @@ oTemp = anData.oTemperature;
     ylabel('Frequency [%]')
     ylim([0 100]);
     if strcmpi(anData.chosenWindDirection,'South wind')
-        title('South-east wind cases')
+        title('JFJ - South-east wind')
     else
-        title('North-west wind cases')        
+        title('JFJ - North-west wind')        
     end
     box on
     

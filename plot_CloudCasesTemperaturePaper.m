@@ -69,7 +69,7 @@ function plot_CloudCasesTemperaturePaper(anData,cntFig)
     %IN Data from Yvonne
     plotColorIN = lbmap(5,'BrownBlue');
     scatter([-32 -32 -32 -32], log([1.6 0.47 0.68 4.8]/1000),25,plotColorIN(2,:),'filled')
-    text(-30,log(1/1000),'\leftarrow Ice nuclei','Color',plotColorIN(2,:),'FontSize',10 )
+    %text(-30,log(1/1000),'\leftarrow Ice nuclei','Color',plotColorIN(2,:),'FontSize',10 )
     
     xfit = linspace(-35,0);
     foo = LinearModel.fit(xvar',yvar','y~x1');

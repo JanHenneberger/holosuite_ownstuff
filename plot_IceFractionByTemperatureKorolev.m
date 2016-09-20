@@ -1,21 +1,26 @@
 function plot_IceFractionByTemperatureKorolev(anData)
 %UNTITLED5 Summary of this function goes here
 %   Detailed explanation goes here
-    %labels={ '-35 to -30°C'; '-30 to -25°C'; '-25 to -20°C'; '-20 to -15°C'; ...
-     %   '-15 to -10°C'; '-10 to -5°C'; '-5 to 0°C'};
-    labels={ '-25 to -20°C'; '-20 to -15°C'; ...
-        '-15 to -10°C'; '-10 to -5°C'};
+    labels={ '-35 to -30°C (L=574km)'; '-30 to -25°C (L=2494km)'; ...
+        '-25 to -20°C (L=3882km)'; '-20 to -15°C (L=7147km)'; ...
+        '-15 to -10°C (L=11441km)'; '-10 to -5°C (L=19720km)'; ...
+        '-5 to 0°C (L=16328km)'};
+    %labels={ '-25 to -20°C'; '-20 to -15°C'; ...
+    %    '-15 to -10°C'; '-10 to -5°C'};
    
     
-    %plotColor = flipud(lbmap(7,'RedBlue'));
+    plotColor = flipud(lbmap(7,'RedBlue'));
+    %plotColor = anData.plotColorTemp;
+    
     stat=tabulate(anData.oIceFraction(anData.chosenData));
-    plotColor = anData.plotColorTemp;
-    %plot(anData.levelsIceFraction,[stat{:,3}],'LineStyle','--','Color',[0.7 0.7 0.7],'LineWidth',1.2)
+    
+    
     hold on
     for cnt = 1:numel(labels)
-        plot(anData.korFrac,anData.korData(:,cnt+2),'Color', plotColor(cnt,:),'LineWidth',1.5)
+        plot(anData.korFrac,anData.korData(:,cnt),'Color', plotColor(cnt,:),'LineWidth',1.5)
+        %plot(anData.korFrac,anData.korData(:,cnt+2),'Color', plotColor(cnt,:),'LineWidth',1.5)
         
-        %plot(anData.korFrac,anData.korData(:,3:6),'--k','LineWidth',1)
+        
     end
     
     legend(labels,'Location','Best')
